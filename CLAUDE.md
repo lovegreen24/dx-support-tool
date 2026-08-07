@@ -106,3 +106,10 @@ MCPツール名: snake_case(例: assess_digital_maturity, suggest_matching_subsi
 - 目標自律度Lv: L2(AIは財務分析〜提案書ドラフト生成までを自動化。経営者への提示・最終判断はコンサルタント本人が行う)
 - AI本体: Claude Sonnet + Tool Use + 自律ループ(最大10回目安)
 - 実行ランタイム: 操作者=ClaudeCode(#1〜#4)のため、自律ループは**Claude Code自身**が回す。**MCPはAnthropic APIを叩かない＝ANTHROPIC_API_KEY不要**。SDK直接の記述もキーも書かない
+
+## Git/GitHub設定
+
+- リポジトリ: https://github.com/lovegreen24/dx-support-tool (Public)
+- ブランチ戦略: `main`(本番・PR必須・`verify`緑必須) / `develop`(開発統合) / `feature/*`(機能開発)
+- Gitフック: `.git/hooks/prepare-commit-msg`(コミット日時自動付与) / `pre-commit`(tsc・lint・秘密情報チェック) / `pre-push`(test)
+- CI: `.github/workflows/ci.yml`(`verify`ジョブ = tsc・lintのみ。unit/結合/E2E/buildはローカル受入ゲートで実施)

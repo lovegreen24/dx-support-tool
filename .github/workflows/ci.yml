@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install (パッケージマネージャ自動検出)
+        run: |
+          if   [ -f pnpm-lock.yaml ]; then corepack enable && pnpm install --frozen-lockfile;
+          elif [ -f yarn.lock ];      then corepack enable && yarn install --frozen-lockfile;
+          elif [ -f package-lock.json ]; then npm ci;
+          else echo "no lockfile yet, skipping install"; fi
+
+      - name: TypeScript check
+        run: |
+          if [ -f turbo.json ]; then npx turbo run tsc;
+          elif [ -f tsconfig.json ]; then npx tsc --noEmit;
+          else echo "no tsconfig yet, skipping"; fi
+
+      - name: Lint
+        run: |
+          if [ -f turbo.json ]; then npx turbo run lint;
+          elif [ -f package.json ] && grep -q '"lint"' package.json; then npm run lint --if-present;
+          else echo "no lint script yet, skipping"; fi
+
+# 注: unit/結合/E2E/build はここに載せない。
+#   理由 = (1) Actions 課金削減 (2) E2E が本番DB直結で事故るため。
+#   これらは pre-push hook とローカル受入ゲート(Agent 11)で実施する。

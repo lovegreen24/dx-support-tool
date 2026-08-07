@@ -40,3 +40,6 @@ coverage/
 
 # AppGenius temp
 .appgenius_temp/
+
+# Tesseract OCR言語データキャッシュ(OCR抽出MCP実行時に自動生成)
+*.traineddata

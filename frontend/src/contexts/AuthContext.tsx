@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { AuthContext } from './auth-context';
+import { config } from '../config';
 
 const SESSION_KEY = 'dx-support-tool.authenticated';
-const DASHBOARD_PASSWORD = import.meta.env.VITE_DASHBOARD_PASSWORD;
+const DASHBOARD_PASSWORD = config.dashboardPassword;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(

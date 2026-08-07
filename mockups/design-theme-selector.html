@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>デザインテーマ選択 - DX伴走支援ツール</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Helvetica Neue", Arial, sans-serif;
+    background: #f0f2f5;
+    padding: 32px;
+  }
+  h1 { font-size: 20px; margin-bottom: 4px; color: #1a1a2e; }
+  p.sub { color: #666; margin-bottom: 28px; font-size: 13px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    max-width: 1100px;
+  }
+  .card {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    background: #fff;
+  }
+  .card-label {
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 14px;
+    border-bottom: 1px solid #eee;
+  }
+  .mock-app { display: flex; height: 260px; }
+  .mock-sidebar { width: 88px; display: flex; flex-direction: column; padding: 12px 0; }
+  .sidebar-item { height: 10px; margin: 8px 14px; border-radius: 4px; opacity: 0.55; }
+  .sidebar-item.active { opacity: 1; }
+  .mock-main { flex: 1; display: flex; flex-direction: column; }
+  .mock-header { height: 44px; display: flex; align-items: center; padding: 0 16px; font-size: 12px; font-weight: 600; color: #fff; }
+  .mock-body { flex: 1; padding: 16px; }
+  .mock-stat-row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .stat-card { flex: 1; border-radius: 8px; padding: 10px; }
+  .stat-num { font-size: 18px; font-weight: 700; }
+  .stat-label { font-size: 10px; opacity: 0.7; margin-top: 2px; }
+  .mock-table { border-radius: 8px; padding: 10px; }
+  .table-row { height: 8px; border-radius: 3px; margin-bottom: 6px; opacity: 0.5; }
+  .btn { display: inline-block; font-size: 11px; padding: 6px 14px; border-radius: 6px; color: #fff; font-weight: 600; margin-top: 8px; }
+
+  /* Theme 1: Professional Navy */
+  .t1 .mock-sidebar { background: #0f1b3c; }
+  .t1 .sidebar-item { background: #6b7fb8; }
+  .t1 .sidebar-item.active { background: #4f9dff; }
+  .t1 .mock-header { background: #142352; }
+  .t1 .mock-body { background: #f7f8fb; }
+  .t1 .stat-card { background: #eef1f9; }
+  .t1 .stat-num { color: #142352; }
+  .t1 .mock-table { background: #eef1f9; }
+  .t1 .table-row { background: #142352; }
+  .t1 .btn { background: #4f9dff; }
+
+  /* Theme 2: Deep Teal (信頼・堅実) */
+  .t2 .mock-sidebar { background: #0d2b2b; }
+  .t2 .sidebar-item { background: #5fa89e; }
+  .t2 .sidebar-item.active { background: #2dd4bf; }
+  .t2 .mock-header { background: #0f3a3a; }
+  .t2 .mock-body { background: #f5faf9; }
+  .t2 .stat-card { background: #e6f5f2; }
+  .t2 .stat-num { color: #0f3a3a; }
+  .t2 .mock-table { background: #e6f5f2; }
+  .t2 .table-row { background: #0f3a3a; }
+  .t2 .btn { background: #2dd4bf; color: #05201f; }
+
+  /* Theme 3: Warm Slate (税理士事務所紹介・落ち着いた印象) */
+  .t3 .mock-sidebar { background: #2b2b33; }
+  .t3 .sidebar-item { background: #9a9aa5; }
+  .t3 .sidebar-item.active { background: #d9a24b; }
+  .t3 .mock-header { background: #37373f; }
+  .t3 .mock-body { background: #faf9f7; }
+  .t3 .stat-card { background: #f1efe9; }
+  .t3 .stat-num { color: #37373f; }
+  .t3 .mock-table { background: #f1efe9; }
+  .t3 .table-row { background: #37373f; }
+  .t3 .btn { background: #d9a24b; color: #2b2b33; }
+
+  /* Theme 4: Minimal Indigo */
+  .t4 .mock-sidebar { background: #ffffff; border-right: 1px solid #e5e5ea; }
+  .t4 .sidebar-item { background: #c7c7d1; }
+  .t4 .sidebar-item.active { background: #5b5fef; }
+  .t4 .mock-header { background: #5b5fef; }
+  .t4 .mock-body { background: #fafafc; }
+  .t4 .stat-card { background: #f0f0fb; }
+  .t4 .stat-num { color: #33336b; }
+  .t4 .mock-table { background: #f0f0fb; }
+  .t4 .table-row { background: #5b5fef; }
+  .t4 .btn { background: #5b5fef; }
+</style>
+</head>
+<body>
+  <h1>デザインテーマ選択</h1>
+  <p class="sub">中小企業DX伴走支援ツール — 進捗ダッシュボード用。4案から1つ選択してください。</p>
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-label">案1: Professional Navy（信頼・金融系コンサル）</div>
+      <div class="mock-app t1">
+        <div class="mock-sidebar">
+          <div class="sidebar-item active"></div>
+          <div class="sidebar-item"></div>
+          <div class="sidebar-item"></div>
+        </div>
+        <div class="mock-main">
+          <div class="mock-header">進捗ダッシュボード</div>
+          <div class="mock-body">
+            <div class="mock-stat-row">
+              <div class="stat-card"><div class="stat-num">12</div><div class="stat-label">クライアント数</div></div>
+              <div class="stat-card"><div class="stat-num">87%</div><div class="stat-label">ヒアリング完了率</div></div>
+            </div>
+            <div class="mock-table">
+              <div class="table-row" style="width:80%"></div>
+              <div class="table-row" style="width:60%"></div>
+              <div class="table-row" style="width:70%"></div>
+            </div>
+            <span class="btn">詳細を見る</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">案2: Deep Teal（堅実・落ち着き）</div>
+      <div class="mock-app t2">
+        <div class="mock-sidebar">
+          <div class="sidebar-item active"></div>
+          <div class="sidebar-item"></div>
+          <div class="sidebar-item"></div>
+        </div>
+        <div class="mock-main">
+          <div class="mock-header">進捗ダッシュボード</div>
+          <div class="mock-body">
+            <div class="mock-stat-row">
+              <div class="stat-card"><div class="stat-num">12</div><div class="stat-label">クライアント数</div></div>
+              <div class="stat-card"><div class="stat-num">87%</div><div class="stat-label">ヒアリング完了率</div></div>
+            </div>
+            <div class="mock-table">
+              <div class="table-row" style="width:80%"></div>
+              <div class="table-row" style="width:60%"></div>
+              <div class="table-row" style="width:70%"></div>
+            </div>
+            <span class="btn">詳細を見る</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">案3: Warm Slate（税理士事務所紹介・親しみ）</div>
+      <div class="mock-app t3">
+        <div class="mock-sidebar">
+          <div class="sidebar-item active"></div>
+          <div class="sidebar-item"></div>
+          <div class="sidebar-item"></div>
+        </div>
+        <div class="mock-main">
+          <div class="mock-header">進捗ダッシュボード</div>
+          <div class="mock-body">
+            <div class="mock-stat-row">
+              <div class="stat-card"><div class="stat-num">12</div><div class="stat-label">クライアント数</div></div>
+              <div class="stat-card"><div class="stat-num">87%</div><div class="stat-label">ヒアリング完了率</div></div>
+            </div>
+            <div class="mock-table">
+              <div class="table-row" style="width:80%"></div>
+              <div class="table-row" style="width:60%"></div>
+              <div class="table-row" style="width:70%"></div>
+            </div>
+            <span class="btn">詳細を見る</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">案4: Minimal Indigo（モダン・シンプル）</div>
+      <div class="mock-app t4">
+        <div class="mock-sidebar">
+          <div class="sidebar-item active"></div>
+          <div class="sidebar-item"></div>
+          <div class="sidebar-item"></div>
+        </div>
+        <div class="mock-main">
+          <div class="mock-header">進捗ダッシュボード</div>
+          <div class="mock-body">
+            <div class="mock-stat-row">
+              <div class="stat-card"><div class="stat-num">12</div><div class="stat-label">クライアント数</div></div>
+              <div class="stat-card"><div class="stat-num">87%</div><div class="stat-label">ヒアリング完了率</div></div>
+            </div>
+            <div class="mock-table">
+              <div class="table-row" style="width:80%"></div>
+              <div class="table-row" style="width:60%"></div>
+              <div class="table-row" style="width:70%"></div>
+            </div>
+            <span class="btn">詳細を見る</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

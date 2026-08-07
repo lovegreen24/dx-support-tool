@@ -13,7 +13,12 @@ export function MainLayout({ children }: { children: ReactNode }) {
       <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
       <Box
         component="main"
-        sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` } }}
+        sx={{
+          flexGrow: 1,
+          minWidth: 0,
+          p: 3,
+          width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
+        }}
       >
         <Toolbar />
         {children}

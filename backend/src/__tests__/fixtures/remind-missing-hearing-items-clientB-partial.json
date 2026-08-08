@@ -1,0 +1,22 @@
+[
+  { "category": "B", "questionId": "bank_balance", "label": "現在の銀行残高" },
+  { "category": "C", "questionId": "inventory_amount_and_turnover_days", "label": "在庫金額・回転日数" },
+  { "category": "C", "questionId": "receivables_balance_and_collection_site", "label": "売掛金残高・回収サイト" },
+  { "category": "C", "questionId": "payables_balance_and_payment_site", "label": "買掛金残高・支払いサイト" },
+  { "category": "D", "questionId": "dead_inventory", "label": "6ヶ月以上動いていない在庫の有無" },
+  { "category": "D", "questionId": "uncollectible_receivables", "label": "回収不能・長期滞留売掛金の有無" },
+  { "category": "D", "questionId": "unused_subscriptions", "label": "未使用サブスクリプション" },
+  { "category": "D", "questionId": "excessive_insurance", "label": "過剰な保険契約" },
+  { "category": "D", "questionId": "excessive_entertainment_expenses", "label": "過剰な接待交際費" },
+  { "category": "E", "questionId": "borrowing_balance_and_type", "label": "現在の借入残高・種類（証書貸付／短期継続融資／当座貸越）" },
+  { "category": "E", "questionId": "monthly_repayment_vs_new_borrowing", "label": "毎月の返済額と新規借入額の比較" },
+  { "category": "E", "questionId": "bank_repayment_plan_review_request", "label": "銀行からの返済プラン見直し打診の有無" },
+  { "category": "E", "questionId": "recent_meeting_contact", "label": "直近の面談相手（担当者／支店長）" },
+  { "category": "F", "questionId": "equipment_and_utility_contracts", "label": "複合機・電気料金・警備保守・エレベーター保守・レンタル品・法人携帯等の契約金額と見直し時期" },
+  { "category": "G", "questionId": "executive_compensation_structure", "label": "現在の役員報酬構成（報酬のみ／旅費規程活用の有無）" },
+  { "category": "G", "questionId": "social_insurance_burden", "label": "法人・個人の社会保険料負担" },
+  { "category": "H", "questionId": "cash_flow_statement_practice", "label": "資金繰り表の作成有無・頻度" },
+  { "category": "H", "questionId": "cash_flow_monitoring_owner", "label": "資金繰りを見ているのが自分一人か" },
+  { "category": "H", "questionId": "fear_of_cash_flow_table", "label": "資金繰り表を見るのが怖いと感じるか" },
+  { "category": "H", "questionId": "payment_site_negotiation_started", "label": "支払いサイト交渉を既に始めているか" }
+]

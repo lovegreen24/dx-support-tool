@@ -1,0 +1,9 @@
+{
+  "id": "6892bb29-23d6-4247-8f6c-9079992d0f7b",
+  "clientId": "8a02688a-06fc-4867-ad0f-187b4255939a",
+  "diagnosisId": "42c4e3a0-9e7b-4411-8db3-5f24b230af5c",
+  "content": "# 株式会社テスト商事 御中\n## 黒字倒産防止のための提言書（ドラフト）\n\n（本文省略。実際のMCP応答は内部結合テストの実施記録として `backend/src/__tests__/clients.integration.test.ts` の先頭コメントに要約を記載）",
+  "status": "draft",
+  "createdAt": "2026-08-08T12:22:01.014306",
+  "updatedAt": "2026-08-08T12:22:01.014306"
+}

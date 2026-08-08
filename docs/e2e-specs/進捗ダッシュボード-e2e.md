@@ -26,7 +26,6 @@
 - `frontend/src/pages/DashboardPage.tsx`
 - `frontend/src/pages/dashboard/ClientListSection.tsx`
 - `frontend/src/pages/dashboard/CaseProgressSection.tsx`
-- `frontend/src/pages/dashboard/dummyData.ts`(現状はダミーデータ表示。案件管理MCP接続後に実データへ置き換え予定)
 - `frontend/src/pages/LoginPage.tsx`
 - `frontend/src/contexts/AuthContext.tsx`
 - `frontend/src/components/ProtectedRoute.tsx`
@@ -102,7 +101,7 @@
 
 ### 3.1 データソースについて
 
-- 本仕様書作成時点で、クライアント一覧・案件進捗の表示データは `frontend/src/pages/dashboard/dummyData.ts` のダミーデータ(`DUMMY_CLIENTS` 5件、`DUMMY_CASE_PROGRESS` 3件)である。案件管理MCP(Googleスプレッドシート連携)接続後、実データに置き換わる想定のため、実データ接続後は件数・値に依存するテストケース(DASH-004〜007、DASH-014等)のアサーション値を実データに合わせて更新すること。
+- クライアント一覧は`GET /api/clients`(自社DB/`ClientStore`集約)、案件進捗は`GET /api/case-progress`(案件管理MCP/M-010と同一のGoogleスプレッドシートを直接HTTPで読む`CaseProgressSheetClient`集約)から取得する実データである。件数・値に依存するテストケース(DASH-004〜007、DASH-014等)のアサーション値は、テスト実行時点の実データ(自社DB・Googleスプレッドシート「案件進捗」シートの内容)に合わせて設定すること。
 
 ### 3.2 選定要素について
 

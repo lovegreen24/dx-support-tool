@@ -28,7 +28,7 @@
 | 6 | バックエンド計画 | Agent 6 | [x] |
 | 7 | エージェント構築 | Agent 7 | [x] |
 | 8 | バックエンド実装 | Agent 8 | [x] |
-| 9 | フロントエンド実装(API統合) | Agent 9 | [ ] |
+| 9 | フロントエンド実装(API統合) | Agent 9 | [x] |
 | 10 | E2Eテスト | Agent 10 | [ ] |
 | 11 | ローカル動作確認 | Agent 11 | [ ] |
 | 12 | デプロイ | Agent 12 | [ ] |
@@ -54,17 +54,17 @@
 #### スライス1: ヘルスチェック
 | タスク | エンドポイント | メソッド | 実装 | Unit | 内部 | 外部 | 品質 | FE統合 |
 |--------|--------------|---------|:----:|:----:|:----:|:----:|:----:|:------:|
-| 1.1 | /api/health | GET | [x] | [x] | - | - | [x] | [ ] |
+| 1.1 | /api/health | GET | [x] | [x] | - | - | [x] | [x]（フロントエンドから消費するページ・機能が存在しないため専用UI連携は対象外。実装したCORS設定・サーバー起動確認により疎通は確認済み） |
 
 #### スライス2-A: クライアント一覧集計
 | タスク | エンドポイント | メソッド | 実装 | Unit | 内部 | 外部 | 品質 | FE統合 |
 |--------|--------------|---------|:----:|:----:|:----:|:----:|:----:|:------:|
-| 2.1 | /api/clients | GET | [x] | [x] | [x]（save_client_record/remind_missing_hearing_items/generate_proposal_draft連携。list_client_historyは業種・従業員数・決算期・提案書状態を含まないため実装に不採用と判明、詳細は`backend/src/db/clientStore.ts`冒頭コメント参照） | - | [x] | [ ] |
+| 2.1 | /api/clients | GET | [x] | [x] | [x]（save_client_record/remind_missing_hearing_items/generate_proposal_draft連携。list_client_historyは業種・従業員数・決算期・提案書状態を含まないため実装に不採用と判明、詳細は`backend/src/db/clientStore.ts`冒頭コメント参照） | - | [x] | [x] |
 
 #### スライス2-B: 案件進捗集計
 | タスク | エンドポイント | メソッド | 実装 | Unit | 内部 | 外部 | 品質 | FE統合 |
 |--------|--------------|---------|:----:|:----:|:----:|:----:|:----:|:------:|
-| 2.2 | /api/case-progress | GET | [x] | [x] | [x]（M-010(cloud_proxy)ゲートウェイの環境変数バインディング不安定性のため、同一のGoogle Sheets(案件進捗シート)をMCPゲートウェイ経由せず直接HTTPで読む方式を採用。設計判断の詳細は`backend/src/google/caseProgressSheetClient.ts`冒頭コメント参照。実データ(実Google Sheets・モック無し)での内部結合テストは`backend/src/__tests__/caseProgress.external.test.ts`(`npm run test:integration:external`で実行。実クレデンシャルはpassword-manager `dx-support-tool-google-sheets-id`/`dx-support-tool-google-service-account-json`から取得しシェルでexportして与える。.env系ファイルは作成しない。デフォルトの`npm test`からは`*.external.test.ts`除外設定により対象外) | - | [x] | [ ] |
+| 2.2 | /api/case-progress | GET | [x] | [x] | [x]（M-010(cloud_proxy)ゲートウェイの環境変数バインディング不安定性のため、同一のGoogle Sheets(案件進捗シート)をMCPゲートウェイ経由せず直接HTTPで読む方式を採用。設計判断の詳細は`backend/src/google/caseProgressSheetClient.ts`冒頭コメント参照。実データ(実Google Sheets・モック無し)での内部結合テストは`backend/src/__tests__/caseProgress.external.test.ts`(`npm run test:integration:external`で実行。実クレデンシャルはpassword-manager `dx-support-tool-google-sheets-id`/`dx-support-tool-google-service-account-json`から取得しシェルでexportして与える。.env系ファイルは作成しない。デフォルトの`npm test`からは`*.external.test.ts`除外設定により対象外) | - | [x] | [x] |
 
 **凡例**: 実装=API実装 / Unit=ユニットテスト / 内部=内部結合テスト / 外部=外部結合テスト / 品質=品質担保 / FE統合=フロントエンドAPI統合(`dummyData.ts`から実データへの置き換え。E2E仕様書 3.1 節のとおりDASH-004〜007・014等のアサーション値更新も含む)
 
@@ -204,3 +204,12 @@
 - このパターンをそのまま踏襲してM-010のハンドラを書き直し(v3)。ローカルで`new Function('return (async (args, env) => {...})')()`によりM-011と同一の呼び出し規約(アロー関数・args/env)を再現した上で、record→list→更新→後始末の一連フローが実際のGoogle Sheetsに対して成功することを確認してから提出した
 - `register_personal_mcp`で新規`mcp_id: mcp-1786198177746-f68bcc76`として再登録(旧`mcp-1786196517525-66d9ef6c`・`mcp-1786197448729-4954a8c1`は`deactivate_service`で無効化)→`install_from_store`→`activate_service(always_on)`→`save_mcp_env`(GOOGLE_SHEETS_ID, GOOGLE_SERVICE_ACCOUNT_JSON)まで完了。診断用に作成した一時MCP(`mcp-1786196916790-44b0e4c6`)も無効化済み
 - 接続テスト: M-011/M-012と同様、同一セッション内ではゲートウェイに新ツールが反映されず(`ToolSearch`で継続して未検出)、このセッションからの実呼び出しでの最終確認はできなかった。オーケストレーターが後続セッションで`mcp-1786198177746-f68bcc76__record_case_approval`/`__list_case_progress`の実呼び出しによる接続確認を行う想定(接続テスト列は`[ ]`のまま)
+
+## 環境構築メモ(Phase 9)
+
+- `frontend/src/services/api/dashboard.ts`のスケルトン(`@API_INTEGRATION`)を実装。`frontend/src/lib/apiClient.ts`(axiosインスタンス、baseURLは`config.apiBaseUrl`←`VITE_API_BASE_URL`)経由で`/api/clients`・`/api/case-progress`を呼び出す
+- `frontend/src/hooks/useClients.ts`・`useCaseProgress.ts`を新規作成(`@tanstack/react-query`の`useQuery`。`main.tsx`に`QueryClientProvider`を追加)。`DashboardPage.tsx`・`ClientListSection.tsx`・`CaseProgressSection.tsx`のハードコード(`DUMMY_CLIENTS`/`DUMMY_CASE_PROGRESS`)をフック呼び出しに置換し、ローディング(`CircularProgress`)・エラー(`Alert`)表示を追加。`frontend/src/pages/dashboard/dummyData.ts`は削除済み
+- **バックエンドの追加修正(CORS)**: ローカルでの疎通確認中、フロントエンド(Vite dev server)からのXHRが`Access-Control-Allow-Origin`ヘッダー欠如によりブロックされることが判明(Agent 8時点ではAPI単体のcurl確認のみでブラウザからの疎通確認はしていなかったため未検出)。`backend/src/app.ts`に`cors`パッケージを追加し、`config.frontendOrigin`(`FRONTEND_ORIGIN`環境変数・カンマ区切り、未設定時は全オリジン許可)で許可オリジンを制御するミドルウェアを追加
+- **既知の未実施事項(バックエンドAPI認証)**: `/api/clients`・`/api/case-progress`はAgent 8実装時点・本Phase時点ともに認証機構を持たない(フロントエンドの簡易パスワード保護は`sessionStorage`によるSPA側のみで、バックエンドAPIへの直接アクセスは防げない)。本Phaseのスコープ(FE統合)外のため対応は見送ったが、Phase 11(ローカル動作確認)またはPhase 12(デプロイ)着手前に対応要否を検討すること
+- 動作確認: バックエンド(`PORT=4620`)・フロントエンド(Vite dev、ランダムポート)を起動し、password-managerから取得した実クレデンシャル(`dx-support-tool-google-sheets-id`/`dx-support-tool-google-service-account-json`、シェルで一時export、ファイル化せず)で`/api/case-progress`が実Google Sheetsに正常疎通することを確認。`backend/data/clients.json`(gitignore対象)に一時テストデータを投入し、MCP Playwrightでログイン→ダッシュボード表示→統計カード/クライアント一覧の実データ反映→レスポンシブ(375px)を実機確認(コンソールエラー0件)。確認後、一時テストデータ・スクリーンショット・ローカルサーバープロセスは全て削除/停止済み
+- `npx tsc --noEmit`・`npm run build`(フロントエンド)ともにエラー0件

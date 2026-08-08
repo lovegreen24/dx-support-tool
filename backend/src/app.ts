@@ -1,4 +1,5 @@
 import express, { type Express } from 'express';
+import cors from 'cors';
 import healthRoutes from './routes/health.routes.js';
 import { createClientsRouter } from './routes/clients.routes.js';
 import { createCaseProgressRouter } from './routes/caseProgress.routes.js';
@@ -25,6 +26,7 @@ export interface AppDependencies {
  */
 export function createApp(deps: AppDependencies = {}): Express {
   const app = express();
+  app.use(cors({ origin: config.frontendOrigin ? config.frontendOrigin.split(',') : true }));
   const clientStore = deps.clientStore ?? new ClientStore(config.clientStoreFilePath);
   const caseProgressSheetClientFactory =
     deps.caseProgressSheetClientFactory ?? (() => new CaseProgressSheetClient(loadCaseProgressSheetConfig(config)));

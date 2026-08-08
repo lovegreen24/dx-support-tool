@@ -7,9 +7,11 @@ import {
   StepLabel,
   Divider,
   Stack,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import type { ApprovalStep, CaseProgress } from '../../types';
-import { DUMMY_CASE_PROGRESS } from './dummyData';
+import { useCaseProgress } from '../../hooks/useCaseProgress';
 
 function activeStepIndex(steps: ApprovalStep[]): number {
   const index = steps.findIndex((step) => step.status !== 'completed');
@@ -54,6 +56,8 @@ function CaseCard({ caseProgress }: { caseProgress: CaseProgress }) {
 }
 
 export function CaseProgressSection() {
+  const { data: cases, isLoading, isError } = useCaseProgress();
+
   return (
     <Paper sx={{ p: 2, mt: 3 }}>
       <Typography variant="h3" component="h3" sx={{ mb: 1 }}>
@@ -62,11 +66,15 @@ export function CaseProgressSection() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         案件管理MCP(Googleスプレッドシート連携)の6承認ポイントを表示します
       </Typography>
-      <Stack divider={<Divider />}>
-        {DUMMY_CASE_PROGRESS.map((caseProgress) => (
-          <CaseCard key={caseProgress.caseId} caseProgress={caseProgress} />
-        ))}
-      </Stack>
+      {isLoading && <CircularProgress />}
+      {isError && <Alert severity="error">案件進捗の取得に失敗しました</Alert>}
+      {cases && (
+        <Stack divider={<Divider />}>
+          {cases.map((caseProgress) => (
+            <CaseCard key={caseProgress.caseId} caseProgress={caseProgress} />
+          ))}
+        </Stack>
+      )}
     </Paper>
   );
 }

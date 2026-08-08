@@ -10,9 +10,11 @@ import {
   Chip,
   Box,
   LinearProgress,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import type { Client } from '../../types';
-import { DUMMY_CLIENTS } from './dummyData';
+import { useClients } from '../../hooks/useClients';
 
 const PROPOSAL_STATUS_META: Record<
   Client['proposalStatus'],
@@ -63,32 +65,38 @@ function ClientRow({ client }: { client: Client }) {
 }
 
 export function ClientListSection() {
+  const { data: clients, isLoading, isError } = useClients();
+
   return (
     <Paper sx={{ p: 2, mt: 3 }}>
       <Typography variant="h3" component="h3" sx={{ mb: 2 }}>
         クライアント一覧
       </Typography>
-      <TableContainer sx={{ overflowX: 'auto' }}>
-        <Table size="small" sx={{ minWidth: 640 }}>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ whiteSpace: 'nowrap' }}>企業名</TableCell>
-              <TableCell sx={{ whiteSpace: 'nowrap' }}>業種</TableCell>
-              <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                従業員数
-              </TableCell>
-              <TableCell sx={{ whiteSpace: 'nowrap' }}>決算期</TableCell>
-              <TableCell sx={{ whiteSpace: 'nowrap' }}>ヒアリング完了率</TableCell>
-              <TableCell sx={{ whiteSpace: 'nowrap' }}>提案書ステータス</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {DUMMY_CLIENTS.map((client) => (
-              <ClientRow key={client.clientId} client={client} />
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {isLoading && <CircularProgress />}
+      {isError && <Alert severity="error">クライアント一覧の取得に失敗しました</Alert>}
+      {clients && (
+        <TableContainer sx={{ overflowX: 'auto' }}>
+          <Table size="small" sx={{ minWidth: 640 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>企業名</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>業種</TableCell>
+                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                  従業員数
+                </TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>決算期</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>ヒアリング完了率</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>提案書ステータス</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {clients.map((client) => (
+                <ClientRow key={client.clientId} client={client} />
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
     </Paper>
   );
 }

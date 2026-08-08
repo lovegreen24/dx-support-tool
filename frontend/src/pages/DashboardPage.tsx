@@ -1,7 +1,8 @@
-import { Box, Typography, Paper, Grid } from '@mui/material';
+import { Box, Typography, Paper, Grid, CircularProgress, Alert } from '@mui/material';
 import { ClientListSection } from './dashboard/ClientListSection';
 import { CaseProgressSection } from './dashboard/CaseProgressSection';
-import { DUMMY_CLIENTS } from './dashboard/dummyData';
+import { useClients } from '../hooks/useClients';
+import type { Client } from '../types';
 
 interface StatCardProps {
   label: string;
@@ -21,17 +22,18 @@ function StatCard({ label, value }: StatCardProps) {
   );
 }
 
-function buildStats() {
-  const clientCount = DUMMY_CLIENTS.length;
-  const avgHearingRate = Math.round(
-    DUMMY_CLIENTS.reduce((sum, client) => sum + client.hearingCompletionRate, 0) / clientCount,
-  );
-  const completedProposals = DUMMY_CLIENTS.filter(
+function buildStats(clients: Client[]) {
+  const clientCount = clients.length;
+  const avgHearingRate =
+    clientCount === 0
+      ? 0
+      : Math.round(
+          clients.reduce((sum, client) => sum + client.hearingCompletionRate, 0) / clientCount,
+        );
+  const completedProposals = clients.filter(
     (client) => client.proposalStatus === 'completed',
   ).length;
-  const unansweredItems = DUMMY_CLIENTS.filter(
-    (client) => client.hearingCompletionRate < 100,
-  ).length;
+  const unansweredItems = clients.filter((client) => client.hearingCompletionRate < 100).length;
 
   return [
     { label: 'クライアント数', value: `${clientCount}件` },
@@ -42,18 +44,22 @@ function buildStats() {
 }
 
 export function DashboardPage() {
-  const stats = buildStats();
+  const { data: clients, isLoading, isError } = useClients();
 
   return (
     <Box>
       <Typography variant="h2" component="h2" sx={{ mb: 3 }}>
         進捗ダッシュボード
       </Typography>
-      <Grid container spacing={2}>
-        {stats.map((stat) => (
-          <StatCard key={stat.label} label={stat.label} value={stat.value} />
-        ))}
-      </Grid>
+      {isLoading && <CircularProgress />}
+      {isError && <Alert severity="error">クライアント情報の取得に失敗しました</Alert>}
+      {clients && (
+        <Grid container spacing={2}>
+          {buildStats(clients).map((stat) => (
+            <StatCard key={stat.label} label={stat.label} value={stat.value} />
+          ))}
+        </Grid>
+      )}
       <ClientListSection />
       <CaseProgressSection />
     </Box>

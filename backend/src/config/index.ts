@@ -24,6 +24,13 @@ export const config = {
    */
   googleSheetsId: process.env.GOOGLE_SHEETS_ID,
   googleServiceAccountJson: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+  /**
+   * フロントエンド(進捗ダッシュボード)からのCORSを許可するオリジン。
+   * カンマ区切りで複数指定可。未設定時はローカル開発を優先し全オリジンを許可する
+   * (認証はダッシュボード側のsessionStorageで完結しCookieを使わないため、
+   * オリジン制限はCSRF対策ではなく想定外クライアントからのアクセス抑制が目的)。
+   */
+  frontendOrigin: process.env.FRONTEND_ORIGIN,
 } as const;
 
 export type Config = typeof config;

@@ -3,4 +3,5 @@ import { config } from '../config';
 
 export const apiClient = axios.create({
   baseURL: config.apiBaseUrl,
+  headers: { 'x-api-key': config.apiKey },
 });

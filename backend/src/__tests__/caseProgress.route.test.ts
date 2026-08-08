@@ -24,16 +24,24 @@ function failingSheetClientFactory(error: Error): () => CaseProgressSheetClient 
     }) as unknown as CaseProgressSheetClient;
 }
 
+const TEST_API_KEY = 'case-progress-route-test-api-key';
+
 describe('GET /api/case-progress', () => {
   it('200を返す', async () => {
-    const app = createApp({ caseProgressSheetClientFactory: stubSheetClientFactory([]) });
-    const res = await request(app).get('/api/case-progress');
+    const app = createApp({ caseProgressSheetClientFactory: stubSheetClientFactory([]), apiKey: TEST_API_KEY });
+    const res = await request(app).get('/api/case-progress').set('x-api-key', TEST_API_KEY);
     expect(res.status).toBe(200);
   });
 
-  it('データ行が無い場合は空配列を返す', async () => {
-    const app = createApp({ caseProgressSheetClientFactory: stubSheetClientFactory([]) });
+  it('X-API-Keyヘッダーが無い場合は401を返す', async () => {
+    const app = createApp({ caseProgressSheetClientFactory: stubSheetClientFactory([]), apiKey: TEST_API_KEY });
     const res = await request(app).get('/api/case-progress');
+    expect(res.status).toBe(401);
+  });
+
+  it('データ行が無い場合は空配列を返す', async () => {
+    const app = createApp({ caseProgressSheetClientFactory: stubSheetClientFactory([]), apiKey: TEST_API_KEY });
+    const res = await request(app).get('/api/case-progress').set('x-api-key', TEST_API_KEY);
     expect(res.body).toEqual([]);
   });
 
@@ -56,8 +64,8 @@ describe('GET /api/case-progress', () => {
       '',
       '2026-08-01T09:00:00.000Z',
     ];
-    const app = createApp({ caseProgressSheetClientFactory: stubSheetClientFactory([row]) });
-    const res = await request(app).get('/api/case-progress');
+    const app = createApp({ caseProgressSheetClientFactory: stubSheetClientFactory([row]), apiKey: TEST_API_KEY });
+    const res = await request(app).get('/api/case-progress').set('x-api-key', TEST_API_KEY);
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual([
@@ -77,16 +85,17 @@ describe('GET /api/case-progress', () => {
   });
 
   it('Content-Typeがjsonである', async () => {
-    const app = createApp({ caseProgressSheetClientFactory: stubSheetClientFactory([]) });
-    const res = await request(app).get('/api/case-progress');
+    const app = createApp({ caseProgressSheetClientFactory: stubSheetClientFactory([]), apiKey: TEST_API_KEY });
+    const res = await request(app).get('/api/case-progress').set('x-api-key', TEST_API_KEY);
     expect(res.headers['content-type']).toMatch(/json/);
   });
 
   it('Sheetsクライアントがエラーを投げた場合は502を返す', async () => {
     const app = createApp({
       caseProgressSheetClientFactory: failingSheetClientFactory(new Error('Google Sheets APIエラー')),
+      apiKey: TEST_API_KEY,
     });
-    const res = await request(app).get('/api/case-progress');
+    const res = await request(app).get('/api/case-progress').set('x-api-key', TEST_API_KEY);
 
     expect(res.status).toBe(502);
     expect(res.body.error).toBe('案件進捗の取得に失敗しました');
@@ -98,8 +107,9 @@ describe('GET /api/case-progress', () => {
       caseProgressSheetClientFactory: () => {
         throw new Error('/api/case-progressに必要な環境変数が未設定です: GOOGLE_SHEETS_ID, GOOGLE_SERVICE_ACCOUNT_JSON');
       },
+      apiKey: TEST_API_KEY,
     });
-    const res = await request(app).get('/api/case-progress');
+    const res = await request(app).get('/api/case-progress').set('x-api-key', TEST_API_KEY);
 
     expect(res.status).toBe(502);
     expect(res.body.detail).toContain('GOOGLE_SHEETS_ID');

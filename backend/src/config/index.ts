@@ -31,6 +31,12 @@ export const config = {
    * オリジン制限はCSRF対策ではなく想定外クライアントからのアクセス抑制が目的)。
    */
   frontendOrigin: process.env.FRONTEND_ORIGIN,
+  /**
+   * `/api/clients`・`/api/case-progress`への認証に使う共有キー(フロントエンドの
+   * VITE_API_KEYと同一値をX-API-Keyヘッダーで送る簡易認証)。未設定時はリクエスト時に
+   * `middleware/apiKeyAuth.ts`側で500を返す(起動時には検証しない。理由は上記googleSheetsId等と同様)。
+   */
+  apiKey: process.env.API_KEY,
 } as const;
 
 export type Config = typeof config;

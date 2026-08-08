@@ -44,6 +44,8 @@ import remindMissingClientACompleted from './fixtures/remind-missing-hearing-ite
 import remindMissingClientBPartial from './fixtures/remind-missing-hearing-items-clientB-partial.json' with { type: 'json' };
 import generateProposalDraftClientA from './fixtures/generate-proposal-draft-clientA.json' with { type: 'json' };
 
+const TEST_API_KEY = 'clients-integration-test-api-key';
+
 describe('GET /api/clients (内部結合テスト・実MCP応答フィクスチャ使用)', () => {
   let tempDir: string;
   let store: ClientStore;
@@ -66,8 +68,8 @@ describe('GET /api/clients (内部結合テスト・実MCP応答フィクスチ�
   });
 
   it('実MCP応答から集計したクライアント一覧を返す', async () => {
-    const app = createApp({ clientStore: store });
-    const res = await request(app).get('/api/clients');
+    const app = createApp({ clientStore: store, apiKey: TEST_API_KEY });
+    const res = await request(app).get('/api/clients').set('x-api-key', TEST_API_KEY);
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual([
@@ -93,8 +95,8 @@ describe('GET /api/clients (内部結合テスト・実MCP応答フィクスチ�
   });
 
   it('全項目回答済み+提案書生成成功のクライアントはcompletedになる', async () => {
-    const app = createApp({ clientStore: store });
-    const res = await request(app).get('/api/clients');
+    const app = createApp({ clientStore: store, apiKey: TEST_API_KEY });
+    const res = await request(app).get('/api/clients').set('x-api-key', TEST_API_KEY);
 
     const clientA = res.body.find(
       (c: { clientId: string }) => c.clientId === '8a02688a-06fc-4867-ad0f-187b4255939a'
@@ -104,8 +106,8 @@ describe('GET /api/clients (内部結合テスト・実MCP応答フィクスチ�
   });
 
   it('ヒアリング一部回答(9/29件)かつ提案書未生成のクライアントはin_progressになる', async () => {
-    const app = createApp({ clientStore: store });
-    const res = await request(app).get('/api/clients');
+    const app = createApp({ clientStore: store, apiKey: TEST_API_KEY });
+    const res = await request(app).get('/api/clients').set('x-api-key', TEST_API_KEY);
 
     const clientB = res.body.find(
       (c: { clientId: string }) => c.clientId === '898b9e52-e6b0-416d-9fc4-2a56e9e9ea6b'

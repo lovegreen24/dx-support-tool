@@ -6,6 +6,8 @@ import request from 'supertest';
 import { createApp } from '../app.js';
 import { ClientStore } from '../db/clientStore.js';
 
+const TEST_API_KEY = 'clients-route-test-api-key';
+
 describe('GET /api/clients', () => {
   let tempDir: string;
   let store: ClientStore;
@@ -20,14 +22,32 @@ describe('GET /api/clients', () => {
   });
 
   it('200を返す', async () => {
-    const app = createApp({ clientStore: store });
-    const res = await request(app).get('/api/clients');
+    const app = createApp({ clientStore: store, apiKey: TEST_API_KEY });
+    const res = await request(app).get('/api/clients').set('x-api-key', TEST_API_KEY);
     expect(res.status).toBe(200);
   });
 
-  it('クライアントが1件も無い場合は空配列を返す', async () => {
-    const app = createApp({ clientStore: store });
+  it('X-API-Keyヘッダーが無い場合は401を返す', async () => {
+    const app = createApp({ clientStore: store, apiKey: TEST_API_KEY });
     const res = await request(app).get('/api/clients');
+    expect(res.status).toBe(401);
+  });
+
+  it('X-API-Keyヘッダーが不正な場合は401を返す', async () => {
+    const app = createApp({ clientStore: store, apiKey: TEST_API_KEY });
+    const res = await request(app).get('/api/clients').set('x-api-key', 'wrong-key');
+    expect(res.status).toBe(401);
+  });
+
+  it('サーバー側でAPI_KEYが未設定の場合は500を返す', async () => {
+    const app = createApp({ clientStore: store, apiKey: undefined });
+    const res = await request(app).get('/api/clients').set('x-api-key', TEST_API_KEY);
+    expect(res.status).toBe(500);
+  });
+
+  it('クライアントが1件も無い場合は空配列を返す', async () => {
+    const app = createApp({ clientStore: store, apiKey: TEST_API_KEY });
+    const res = await request(app).get('/api/clients').set('x-api-key', TEST_API_KEY);
     expect(res.body).toEqual([]);
   });
 
@@ -42,8 +62,8 @@ describe('GET /api/clients', () => {
     store.updateHearingProgress('C-1', 0);
     store.markProposalGenerated('C-1', '2026-08-08T12:22:01.014Z');
 
-    const app = createApp({ clientStore: store });
-    const res = await request(app).get('/api/clients');
+    const app = createApp({ clientStore: store, apiKey: TEST_API_KEY });
+    const res = await request(app).get('/api/clients').set('x-api-key', TEST_API_KEY);
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual([
@@ -60,8 +80,8 @@ describe('GET /api/clients', () => {
   });
 
   it('Content-Typeがjsonである', async () => {
-    const app = createApp({ clientStore: store });
-    const res = await request(app).get('/api/clients');
+    const app = createApp({ clientStore: store, apiKey: TEST_API_KEY });
+    const res = await request(app).get('/api/clients').set('x-api-key', TEST_API_KEY);
     expect(res.headers['content-type']).toMatch(/json/);
   });
 
@@ -81,8 +101,8 @@ describe('GET /api/clients', () => {
       fiscalYearEndMonthDay: '09-30',
     });
 
-    const app = createApp({ clientStore: store });
-    const res = await request(app).get('/api/clients');
+    const app = createApp({ clientStore: store, apiKey: TEST_API_KEY });
+    const res = await request(app).get('/api/clients').set('x-api-key', TEST_API_KEY);
 
     expect(res.body.map((c: { clientId: string }) => c.clientId)).toEqual(['C-1', 'C-2']);
   });

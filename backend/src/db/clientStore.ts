@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 /**
@@ -74,12 +74,18 @@ export class ClientStore {
     return JSON.parse(raw) as StoreFile;
   }
 
+  /**
+   * 一時ファイルへ書き込んでから同一ファイルシステム内でrenameする(POSIXでアトミック)。
+   * 書き込み中のプロセス強制終了等でclients.jsonが壊れたJSONのまま残ることを防ぐ。
+   */
   private save(data: StoreFile): void {
     const dir = dirname(this.filePath);
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
-    writeFileSync(this.filePath, JSON.stringify(data, null, 2), 'utf-8');
+    const tmpPath = `${this.filePath}.tmp-${process.pid}-${Date.now()}`;
+    writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
+    renameSync(tmpPath, this.filePath);
   }
 
   /** save_client_recordの結果を取り込む(新規作成 or 基本情報の上書き更新) */

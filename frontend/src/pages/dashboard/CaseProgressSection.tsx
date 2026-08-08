@@ -34,23 +34,29 @@ function CaseCard({ caseProgress }: { caseProgress: CaseProgress }) {
           承認済み {completedCount} / {caseProgress.steps.length}
         </Typography>
       </Stack>
-      <Stepper activeStep={activeStepIndex(caseProgress.steps)} alternativeLabel>
-        {caseProgress.steps.map((step) => (
-          <Step key={step.label} completed={step.status === 'completed'}>
-            <StepLabel
-              optional={
-                step.approvedAt ? (
-                  <Typography variant="body2" color="text.secondary">
-                    {step.approvedAt}
-                  </Typography>
-                ) : undefined
-              }
-            >
-              {step.label}
-            </StepLabel>
-          </Step>
-        ))}
-      </Stepper>
+      <Box sx={{ overflowX: 'auto' }}>
+        <Stepper
+          activeStep={activeStepIndex(caseProgress.steps)}
+          alternativeLabel
+          sx={{ minWidth: { xs: 560, sm: 0 } }}
+        >
+          {caseProgress.steps.map((step) => (
+            <Step key={step.label} completed={step.status === 'completed'}>
+              <StepLabel
+                optional={
+                  step.approvedAt ? (
+                    <Typography variant="body2" color="text.secondary">
+                      {step.approvedAt}
+                    </Typography>
+                  ) : undefined
+                }
+              >
+                {step.label}
+              </StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+      </Box>
     </Box>
   );
 }

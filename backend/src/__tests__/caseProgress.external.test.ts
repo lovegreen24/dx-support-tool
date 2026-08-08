@@ -126,6 +126,8 @@ async function deleteTestRow(): Promise<void> {
   }
 }
 
+const TEST_API_KEY = 'case-progress-external-test-api-key';
+
 describe('GET /api/case-progress(内部結合テスト・実Google Sheets接続)', () => {
   beforeAll(async () => {
     await appendTestRow();
@@ -142,9 +144,10 @@ describe('GET /api/case-progress(内部結合テスト・実Google Sheets接続)
   it('実際のGoogle Sheetsから取得した案件が/api/case-progressのレスポンスに含まれる', async () => {
     const app = createApp({
       caseProgressSheetClientFactory: () => new CaseProgressSheetClient(config),
+      apiKey: TEST_API_KEY,
     });
 
-    const res = await request(app).get('/api/case-progress');
+    const res = await request(app).get('/api/case-progress').set('x-api-key', TEST_API_KEY);
 
     expect(res.status).toBe(200);
     const target = (res.body as Array<{ caseId: string }>).find((c) => c.caseId === TEST_CASE_ID);

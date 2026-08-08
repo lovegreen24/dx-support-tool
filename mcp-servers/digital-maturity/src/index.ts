@@ -7,7 +7,13 @@ import {
   assessDigitalMaturityInputSchema,
   handleAssessDigitalMaturity,
 } from './tools/assessDigitalMaturity.js';
+import {
+  LIST_DIGITAL_MATURITY_HISTORY_TOOL_NAME,
+  listDigitalMaturityHistoryInputSchema,
+  handleListDigitalMaturityHistory,
+} from './tools/listDigitalMaturityHistory.js';
 import type { AssessDigitalMaturityInput } from './types.js';
+import type { ListDigitalMaturityHistoryInput } from './tools/listDigitalMaturityHistory.js';
 
 const server = new Server(
   { name: 'digital-maturity-mcp', version: '1.0.0' },
@@ -24,21 +30,34 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         '各領域スコア・総合スコア・改善優先度リストを算出してSupabaseに保存する',
       inputSchema: assessDigitalMaturityInputSchema,
     },
+    {
+      name: LIST_DIGITAL_MATURITY_HISTORY_TOOL_NAME,
+      description: 'client_id単位でDX成熟度診断履歴(新しい順)を取得する(assess_digital_maturityの実施結果一覧)',
+      inputSchema: listDigitalMaturityHistoryInputSchema,
+    },
   ],
 }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  if (request.params.name !== ASSESS_DIGITAL_MATURITY_TOOL_NAME) {
-    throw new Error(`未知のツールです: ${request.params.name}`);
+  if (request.params.name === ASSESS_DIGITAL_MATURITY_TOOL_NAME) {
+    const result = await handleAssessDigitalMaturity(
+      request.params.arguments as unknown as AssessDigitalMaturityInput,
+    );
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
   }
 
-  const result = await handleAssessDigitalMaturity(
-    request.params.arguments as unknown as AssessDigitalMaturityInput,
-  );
+  if (request.params.name === LIST_DIGITAL_MATURITY_HISTORY_TOOL_NAME) {
+    const result = await handleListDigitalMaturityHistory(
+      request.params.arguments as unknown as ListDigitalMaturityHistoryInput,
+    );
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    };
+  }
 
-  return {
-    content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-  };
+  throw new Error(`未知のツールです: ${request.params.name}`);
 });
 
 async function main(): Promise<void> {

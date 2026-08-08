@@ -4,6 +4,7 @@
  */
 import { AssessmentRepository } from '../../../src/db.js';
 import { handleAssessDigitalMaturity } from '../../../src/tools/assessDigitalMaturity.js';
+import { handleListDigitalMaturityHistory } from '../../../src/tools/listDigitalMaturityHistory.js';
 import { MATURITY_CATALOG } from '../../../src/catalog.js';
 import type { MaturityAnswers } from '../../../src/types.js';
 
@@ -198,6 +199,35 @@ describe('digital_maturity_assessments 内部結合テスト', () => {
 
       const rows = await repository.findByClientId(clientId);
       expect(rows).toEqual([]);
+    });
+  });
+
+  describe('handleListDigitalMaturityHistory(履歴取得ツールハンドラ)', () => {
+    it('assess_digital_maturityで保存した履歴を新しい順に取得できる', async () => {
+      const clientId = uniqueClientId('list-history');
+      createdClientIds.push(clientId);
+
+      await handleAssessDigitalMaturity({ client_id: clientId, answers: buildAnswers(1) });
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      await handleAssessDigitalMaturity({ client_id: clientId, answers: buildAnswers(4) });
+
+      const history = await handleListDigitalMaturityHistory({ client_id: clientId });
+
+      expect(history).toHaveLength(2);
+      expect(history[0].overall_score).toBe(100); // 新しい順(2回目が先頭)
+      expect(history[1].overall_score).toBe(25);
+      expect(history[0].client_id).toBe(clientId);
+    });
+
+    it('診断履歴が無いclient_idは空配列を返す', async () => {
+      const history = await handleListDigitalMaturityHistory({ client_id: uniqueClientId('list-none') });
+      expect(history).toEqual([]);
+    });
+
+    it('client_id未指定はエラーになる', async () => {
+      await expect(
+        handleListDigitalMaturityHistory({ client_id: '' }),
+      ).rejects.toThrow(/client_idは必須の文字列です/);
     });
   });
 });

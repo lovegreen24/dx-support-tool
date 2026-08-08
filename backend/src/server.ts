@@ -1,11 +1,11 @@
 import { createApp } from './app.js';
 import { config } from './config/index.js';
+import { logger } from './logger.js';
 
 const app = createApp();
 
 const server = app.listen(config.port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`[backend] listening on port ${config.port} (${config.nodeEnv})`);
+  logger.info('backend listening', { port: config.port, nodeEnv: config.nodeEnv });
 });
 
 /**
@@ -13,20 +13,17 @@ const server = app.listen(config.port, () => {
  * 8秒でタイムアウトした場合は強制終了する(要件定義 5.セキュリティ要件のグレースフルシャットダウン仕様)。
  */
 function gracefulShutdown(signal: string): void {
-  // eslint-disable-next-line no-console
-  console.log(`[backend] received ${signal}, shutting down gracefully...`);
+  logger.info('received shutdown signal', { signal });
 
   const forceExitTimer = setTimeout(() => {
-    // eslint-disable-next-line no-console
-    console.error('[backend] graceful shutdown timed out, forcing exit');
+    logger.error('graceful shutdown timed out, forcing exit');
     process.exit(1);
   }, config.shutdownTimeoutMs);
 
   server.close((err) => {
     clearTimeout(forceExitTimer);
     if (err) {
-      // eslint-disable-next-line no-console
-      console.error('[backend] error during shutdown', err);
+      logger.error('error during shutdown', { error: err.message });
       process.exit(1);
     }
     process.exit(0);

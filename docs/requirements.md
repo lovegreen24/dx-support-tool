@@ -148,7 +148,7 @@ MCPサーバー群:
 
 確認UI(進捗ダッシュボード):
   構成: Vite + React + TypeScript + MUI(Agent 3にて構築)
-  ホスティング: Cloudflare Pages(無料枠・運用コストゼロ)
+  ホスティング: Vercel(無料枠。Phase 12でCloudflareアカウント未保有のためVercelに変更・vercel CLI認証済みを活用)
   保護: 簡易パスワード認証(クライアントサイド・単一ロール)
 
 定期実行: なし(コンサルタントがClaude Codeを起動する都度、対話的に利用)

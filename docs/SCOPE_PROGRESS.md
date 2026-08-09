@@ -16,7 +16,9 @@
 
 ## 実装計画
 
-### 開発フェーズ
+### 拡張フェーズ
+
+> 開発フェーズ(Phase 1〜12)は全て完了。以降は機能拡張・運用フェーズ。
 
 | Phase | 名称 | 担当 | 状態 |
 |-------|------|------|------|
@@ -29,9 +31,9 @@
 | 7 | エージェント構築 | Agent 7 | [x] |
 | 8 | バックエンド実装 | Agent 8 | [x] |
 | 9 | フロントエンド実装(API統合) | Agent 9 | [x] |
-| 10 | E2Eテスト | Agent 10 | [ ] |
+| 10 | E2Eテスト | Agent 10 | [x] |
 | 11 | ローカル動作確認 | Agent 11 | [x] |
-| 12 | デプロイ | Agent 12 | [ ] |
+| 12 | デプロイ | Agent 12 | [x] |
 
 > アーキ#4(操作者=ClaudeCode・MCP新規開発・フロントUIあり)のため、Phase 3・4・9(フロントエンド)は簡易ダッシュボード分のみ実施。Phase 7(エージェント構築)はAI本体Yありのため実施。
 
@@ -335,9 +337,26 @@ Phase 7登録済み6エージェントを対象に、各エージェントの本
 - トランザクション管理・同時アクセス対応の追加実装(ロック機構等): 実装確認の結果、書き込みは全て単一ステートメント・単一プロセス同期I/Oであり、保護すべき並行書き込み経路が存在しないため
 - ルートREADME.mdの新規作成: CLAUDE.mdの許可ドキュメント一覧(`docs/SCOPE_PROGRESS.md`・`docs/requirements.md`・`docs/DEPLOYMENT.md`・`docs/e2e-specs/`)に含まれないため、ユーザー許諾なしに作成しなかった
 
-### 次回セッション(Phase 12)への引き継ぎ事項
+## 🚀 デプロイ(Phase 12・実施日: 2026-08-09)
 
-- **M-010(案件管理)・M-011(補助金マッチング)のcloud_proxyゲートウェイ接続が4セッション連続で失敗**(上記参照)。ダッシュボードAPI自体への影響は無いが、コンサルタント業務での`suggest_matching_subsidies`・`record_case_approval`/`list_case_progress`直接呼び出しは引き続き使用不可。プラットフォーム側の制約の可能性が高く、ユーザー判断(サポート問い合わせ等)が必要
-- デプロイ先確定後、`docs/DEPLOYMENT.md`のクラウドインフラ・セキュリティ項目(IAM最小権限・公開範囲・Secret管理)を再評価すること
-- `backend/data/clients.json`の永続化方式は、デプロイ先がステートレス実行環境(Cloudflare Workers等)の場合に再検討が必要(`docs/DEPLOYMENT.md`「バックアップ・復旧」参照)
+**本番環境URL(⚠️ 変更禁止)**:
+- フロントエンド: https://dx-support-tool.vercel.app
+- バックエンド: https://dx-support-tool-backend-244699407868.asia-northeast1.run.app
+
+**構成変更(要件定義書からの変更点)**: フロントエンドホスティングは要件定義書§6で「Cloudflare Pages」としていたが、Cloudflareアカウント未保有・vercel CLI認証済みのユーザー判断により**Vercelに変更**(requirements.md §6更新済み)。バックエンドは要件定義時点で未確定だったため、本Phaseでユーザーと協議しCloud Run(gcloud認証済み・GCPプロジェクト`gen-lang-client-0662622046`)に決定。
+
+**実施内容**:
+- 事前検証: frontend/backend双方でtsc 0件・build成功・npm audit 0件を確認
+- バックエンド: GCP Secret Manager(`dx-support-tool-API_KEY`・`dx-support-tool-GOOGLE_SERVICE_ACCOUNT_JSON`・`dx-support-tool-GOOGLE_SHEETS_ID`)を新規作成し、Cloud Run実行サービスアカウントにsecretAccessor権限を付与した上で`gcloud run deploy`(Buildpacks・Dockerfile不要)。2段階デプロイでURL確定後、`FRONTEND_ORIGIN`をVercel URLに更新して再デプロイ
+- フロントエンド: `vercel link --project dx-support-tool`でプロジェクト作成・リンク。`VITE_DASHBOARD_PASSWORD`(新規生成・password-manager `dx-support-tool-dashboard-password`に保存)・`VITE_API_KEY`・`VITE_API_BASE_URL`をVercel Production環境変数に設定し`vercel --prod`でデプロイ
+- `scripts/deploy-backend.sh`・`deploy-frontend.sh`・`deploy-production.sh`(品質ゲート付き)を新規作成。`docs/DEPLOYMENT.md`を本番URL・実際の構成に更新
+- 動作検証: Playwrightで本番URLへログイン(パスワード認証)→ダッシュボード表示(クライアント数0件・ヒアリング完了率0%等、実際の空データを正しく反映)→コンソールエラー0件を確認
+
+**意図的な設計判断**:
+- `deploy-production.sh`の品質ゲートはtsc/build/backend unit・内部結合テストのみとし、外部結合テスト(`test:integration:external`)とE2Eテストは含めない(実際のGoogle Sheets/Supabase/財務系クラウドDBへの書き込みを伴うため、デプロイの度に自動実行すると本番データが汚染される。必要時は個別に手動実行)
+- `backend/data/clients.json`はCloud Run(ステートレス)採用により再デプロイ・スケールイン毎にリセットされる。単一コンサルタント・低頻度利用のため実害は小さいと判断し、恒久対応(Cloud Storage移行等)は見送り(既知の制約として`docs/DEPLOYMENT.md`に明記)
+
+### 拡張フェーズへの引き継ぎ事項
+
+- **M-010(案件管理)・M-011(補助金マッチング)のcloud_proxyゲートウェイ接続が6セッション連続で失敗**(上記参照)。ダッシュボードAPI自体への影響は無いが、コンサルタント業務での`suggest_matching_subsidies`・`record_case_approval`/`list_case_progress`直接呼び出しは引き続き使用不可。同じhosting=cloud_proxyの個人MCPであるM-012(`assess_digital_maturity`)は正常動作しており、「cloud_proxy型だから原理的に不可」では説明がつかない矛盾を確認。BlueLampサポートに正式チケット起票済み(チケットID: `99288c5f-4c19-42e7-b539-b6adee0e55f8`、2026-08-09)。**次回セッションは`list_my_tickets`でこのチケットの回答有無を確認すること**
 

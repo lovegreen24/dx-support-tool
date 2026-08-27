@@ -404,5 +404,14 @@ Phase 7登録済み6エージェントを対象に、各エージェントの本
 - 実際のツール呼び出し(福岡・介護保険非該当、現行「月額80万円のみ」→変更後「月額30万円+旅費規程月額20万円+年1回賞与360万円(事前確定届出給与・届出済み)」、受取総額は同額)で動作確認。結果: 年間手取り+953,330円、会社負担(事業主分社会保険料)−386,184円、法人税影響0円(届出済みのため)
 - 未届出パターンでの`effective_corporate_tax_rate`未指定時にエラーとなることを確認
 
-**ドキュメント更新箇所**: `CLAUDE.md`(MCP構成の説明を賞与・法人税影響対応に更新)・`docs/requirements.md`(T-013の説明・入力/出力列を更新)・本ファイル(本セクション)。gitへのコミットはユーザーの明示的な指示待ち。
+**ドキュメント更新箇所**: `CLAUDE.md`(MCP構成の説明を賞与・法人税影響対応に更新)・`docs/requirements.md`(T-013の説明・入力/出力列を更新)・本ファイル(本セクション)。
+
+**コミット・PR**: `8fa999e`(ブランチ`feature/executive-bonus-simulation`、pre-commit/pre-pushフック共にPASS)。`main`向けPR #1を作成: https://github.com/lovegreen24/dx-support-tool/pull/1
+
+### マージ前ローカル受入ゲート(実施日: 2026-08-28)
+
+- 型チェック: backend・frontend・mcp-servers全4種(compensation-optimizer含む)すべて0件
+- lint: frontend(oxlint)0件
+- unit/内部結合テスト: backend 92/92・compensation-optimizer 45/45・case-management 36/36・subsidy-matching 29/29・digital-maturity 21/21、全てPASS
+- **E2E再実行・本番運用診断は対象外と判断**: `compensation-optimizer`はbackend/frontend/他MCPのどこからも参照されておらず(`grep`で確認済み)、既存のダッシュボードE2E(DASH-001〜030)や本番デプロイ済みのCloud Run/Vercelには一切接続しない、コンサルタント本人専用のlocal MCPであるため、この変更による回帰の可能性がない。既存E2Eの再実行・本番運用診断のやり直しは実施しなかった
 

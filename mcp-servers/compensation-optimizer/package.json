@@ -1,0 +1,24 @@
+{
+  "name": "compensation-optimizer-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "役員報酬・旅費規程の組み替えによる税・社会保険料への影響を試算するMCPサーバー(simulate_executive_compensation)",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test:unit": "NODE_OPTIONS=--experimental-vm-modules jest tests/unit --coverage",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^24.13.3",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "~5.6.3"
+  }
+}

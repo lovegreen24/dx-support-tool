@@ -40,6 +40,14 @@ export const RESIDENT_TAX_BASIC_DEDUCTION = 430000;
 /** 厚生年金保険料率(労使合計。本人負担はこの半分=9.15%。平成29年9月分以降固定) */
 export const PENSION_RATE = 0.183;
 
+/**
+ * 標準賞与額の上限(1,000円未満切り捨て後の賞与額に適用)。
+ * 健康保険は年度累計(4月〜翌3月)573万円、厚生年金は1回の支給につき150万円が上限。
+ * 出典: 全国健康保険協会「標準賞与額」https://www.kyoukaikenpo.or.jp/g3/cat330/sb3160/ 、日本年金機構。
+ */
+export const BONUS_STANDARD_AMOUNT_CAP_HEALTH = 5730000;
+export const BONUS_STANDARD_AMOUNT_CAP_PENSION = 1500000;
+
 /** 雇用保険料率(令和7年度・一般の事業) */
 export const EMPLOYMENT_INSURANCE_EMPLOYEE_RATE = 0.0055;
 export const EMPLOYMENT_INSURANCE_EMPLOYER_RATE = 0.009;

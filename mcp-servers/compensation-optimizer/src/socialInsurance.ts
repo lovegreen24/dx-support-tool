@@ -1,4 +1,6 @@
 import {
+  BONUS_STANDARD_AMOUNT_CAP_HEALTH,
+  BONUS_STANDARD_AMOUNT_CAP_PENSION,
   EMPLOYMENT_INSURANCE_EMPLOYEE_RATE,
   EMPLOYMENT_INSURANCE_EMPLOYER_RATE,
   HEALTH_INSURANCE_GRADES,
@@ -107,5 +109,67 @@ export function computeSocialInsurance(
     employmentInsuranceEmployerAnnual,
     employeeAnnualTotal,
     employerAnnualTotal,
+  };
+}
+
+export interface BonusSocialInsuranceResult {
+  standardBonusAmountHealth: number;
+  standardBonusAmountPension: number;
+  healthInsuranceEmployeeAnnual: number;
+  healthInsuranceEmployerAnnual: number;
+  pensionEmployeeAnnual: number;
+  pensionEmployerAnnual: number;
+  employeeAnnualTotal: number;
+  employerAnnualTotal: number;
+}
+
+/**
+ * 年1回の賞与から、標準賞与額(1,000円未満切り捨て・上限適用後)に基づく
+ * 健康保険・厚生年金保険料を算出する(月額報酬分とは別枠)。
+ * 雇用保険は月額報酬分の年間賃金総額(annualTaxableSalary)に賞与を含めて算定するため、ここでは扱わない。
+ */
+export function computeBonusSocialInsurance(
+  bonusAnnual: number,
+  prefecture: string,
+  careInsuranceApplicable: boolean,
+): BonusSocialInsuranceResult {
+  if (bonusAnnual <= 0) {
+    return {
+      standardBonusAmountHealth: 0,
+      standardBonusAmountPension: 0,
+      healthInsuranceEmployeeAnnual: 0,
+      healthInsuranceEmployerAnnual: 0,
+      pensionEmployeeAnnual: 0,
+      pensionEmployerAnnual: 0,
+      employeeAnnualTotal: 0,
+      employerAnnualTotal: 0,
+    };
+  }
+
+  const prefRate = HEALTH_INSURANCE_RATE_BY_PREFECTURE[prefecture];
+  if (!prefRate) {
+    throw new Error(`未対応の都道府県です: ${prefecture}`);
+  }
+  const effectiveHealthRate = careInsuranceApplicable ? prefRate.careApplicable : prefRate.normal;
+
+  const bonusRounded = Math.floor(bonusAnnual / 1000) * 1000;
+  const standardBonusAmountHealth = Math.min(bonusRounded, BONUS_STANDARD_AMOUNT_CAP_HEALTH);
+  const standardBonusAmountPension = Math.min(bonusRounded, BONUS_STANDARD_AMOUNT_CAP_PENSION);
+
+  const healthInsuranceEmployeeAnnual = Math.round((standardBonusAmountHealth * effectiveHealthRate) / 2);
+  const healthInsuranceEmployerAnnual = healthInsuranceEmployeeAnnual;
+
+  const pensionEmployeeAnnual = Math.round((standardBonusAmountPension * PENSION_RATE) / 2);
+  const pensionEmployerAnnual = pensionEmployeeAnnual;
+
+  return {
+    standardBonusAmountHealth,
+    standardBonusAmountPension,
+    healthInsuranceEmployeeAnnual,
+    healthInsuranceEmployerAnnual,
+    pensionEmployeeAnnual,
+    pensionEmployerAnnual,
+    employeeAnnualTotal: healthInsuranceEmployeeAnnual + pensionEmployeeAnnual,
+    employerAnnualTotal: healthInsuranceEmployerAnnual + pensionEmployerAnnual,
   };
 }

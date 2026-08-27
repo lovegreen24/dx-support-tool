@@ -1,4 +1,5 @@
 import {
+  computeBonusSocialInsurance,
   computeSocialInsurance,
   findHealthInsuranceGrade,
   findPensionStandardRemuneration,
@@ -69,5 +70,43 @@ describe('computeSocialInsurance', () => {
 
   it('未対応の都道府県を指定するとエラーになる', () => {
     expect(() => computeSocialInsurance(500000, 6000000, '存在しない県', false)).toThrow(/未対応の都道府県/);
+  });
+});
+
+describe('computeBonusSocialInsurance', () => {
+  it('賞与が0の場合はすべて0になる', () => {
+    const result = computeBonusSocialInsurance(0, '東京', false);
+    expect(result.standardBonusAmountHealth).toBe(0);
+    expect(result.employeeAnnualTotal).toBe(0);
+    expect(result.employerAnnualTotal).toBe(0);
+  });
+
+  it('標準賞与額は1,000円未満を切り捨てる', () => {
+    const result = computeBonusSocialInsurance(1234567, '東京', false);
+    expect(result.standardBonusAmountHealth).toBe(1234000);
+    expect(result.standardBonusAmountPension).toBe(1234000);
+  });
+
+  it('健康保険の標準賞与額は年573万円が上限になる(厚生年金は150万円のまま)', () => {
+    const result = computeBonusSocialInsurance(7000000, '東京', false);
+    expect(result.standardBonusAmountHealth).toBe(5730000);
+    expect(result.standardBonusAmountPension).toBe(1500000);
+  });
+
+  it('厚生年金の標準賞与額は1回150万円が上限になる', () => {
+    const result = computeBonusSocialInsurance(2000000, '東京', false);
+    expect(result.standardBonusAmountPension).toBe(1500000);
+  });
+
+  it('健康保険料・厚生年金保険料は労使折半で計算する', () => {
+    const result = computeBonusSocialInsurance(2000000, '東京', false);
+    expect(result.healthInsuranceEmployeeAnnual).toBe(result.healthInsuranceEmployerAnnual);
+    expect(result.pensionEmployeeAnnual).toBe(result.pensionEmployerAnnual);
+    expect(result.healthInsuranceEmployeeAnnual).toBe(Math.round((2000000 * 0.0991) / 2));
+    expect(result.pensionEmployeeAnnual).toBe(Math.round((1500000 * 0.183) / 2));
+  });
+
+  it('未対応の都道府県を指定するとエラーになる', () => {
+    expect(() => computeBonusSocialInsurance(1000000, '存在しない県', false)).toThrow(/未対応の都道府県/);
   });
 });

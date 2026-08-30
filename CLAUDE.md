@@ -72,6 +72,7 @@ NotebookLM連携（既存OSS `notebooklm-mcp`・local）← 自前ノートブ�
 ├── NotebookLMに一般向け公開APIは無い(公式APIはGemini Notebook Enterprise版のみ)ため、Chrome自動操作型の非公式MCPを利用する
 ├── 認証＝本人のGoogleセッション(永続Chromeプロファイル)。hosting型は必ずlocal、cloud_proxy不可
 ├── 有効ツールは`NOTEBOOKLM_PROFILE=standard`に限定(ask_question/list_notebooks/select_notebook/get_notebook/search_notebooks/add_notebook/update_notebook/setup_auth/list_sessions/get_health)。ソース追加・音声生成は対象外
+├── `standard`では`re_auth`/`cleanup_data`は非公開。認証をやり直す場合は`~/.local/share/notebooklm-mcp/chrome_profile/`を手動削除してから`setup_auth`を再実行する(認証破棄は人間の明示操作に限定し、エージェントのツール呼び出しでは行わせない)
 └── 設定は`.mcp.json`、導入手順は`scripts/setup-notebooklm-mcp.sh`
 ```
 

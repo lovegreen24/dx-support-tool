@@ -145,6 +145,18 @@
 | M-010 | 案件管理MCP | 新規開発(Phase 5でMCPストアの同名ツールは別プロジェクト(漫画電子書籍パイプライン)用と判明したため方針変更) | cloud_proxy | GOOGLE_SHEETS_ID, GOOGLE_SERVICE_ACCOUNT_JSON(save_mcp_envで個人MCP`mcp-1786198177746-f68bcc76`へ反映済み。旧`mcp-1786196517525-66d9ef6c`・`mcp-1786197448729-4954a8c1`はハンドラ引数解決バグのためdeactivate済み、詳細は環境構築メモ参照) | [x] | [ ] |
 | M-011 | 補助金マッチング | 新規開発 | cloud_proxy | NOTION_TOKEN, NOTION_DATABASE_ID(取得済・password-manager保存済) | [x] | [x] |
 | M-012 | assess_digital_maturity(DX成熟度診断) | 新規開発 | cloud_proxy | DATABASE_URL, SUPABASE_SERVICE_KEY(DB反映済・password-manager保存済。詳細は「データモデル定義」節参照) | [x] | [x] |
+| M-013 | NotebookLM連携(`notebooklm-mcp`・ask_question等) | 既存OSS導入(サードパーティMCP・MIT) | local | なし(認証は本人のGoogleセッション/永続Chromeプロファイル。環境変数はNOTEBOOKLM_PROFILE=standard等の挙動設定のみで秘匿値なし) | [x] | [ ](ローカルでの`setup_auth`・接続確認が必要) |
+
+## 環境構築メモ(NotebookLM連携・M-013)
+
+- **前提調査**: NotebookLM(2026年7月に「Gemini Notebook」へ改称)には一般向けの公開APIが存在しない。公式APIはGoogle Cloudの**Gemini Notebook Enterprise**版のみ(一部Pre-GA)で、Workspace Enterprise契約が前提。コンシューマ向けAPIは2026年8月時点で未提供
+- **採用方式**: そのため既存MCPは全てChrome自動操作型の非公式実装になる。候補のうち`PleasePrompto/notebooklm-mcp`(npm `notebooklm-mcp`・MIT・Node>=18・WSL2/WSLg対応)を採用。本プロジェクトがNode/TypeScript構成であること、WSL2で動くこと(M-009 OCR抽出と同条件)が決め手。Python+uv方式の`notebooklm-mcp-2026`は追加ツールチェーンが必要なため見送り
+- **hosting型**: 認証が本人のGoogleセッション(永続Chromeプロファイル)に依存するため`local`固定。cloud_proxy(Cloudflare Workers)には載せられない。よってM-010/M-011で継続しているゲートウェイ環境変数バインディング問題の影響も受けない
+- **設定**: リポジトリルートの`.mcp.json`でバージョン固定(`notebooklm-mcp@2.0.0`)。`NOTEBOOKLM_PROFILE=standard`で読み取り系＋ライブラリ管理のみに限定し、`add_source`(ソース追加)・`generate_audio`/`download_audio`(音声生成)は無効化している。用途が「既存MCP群への根拠提供」であり書き込みが不要なため
+- **導入手順**: `./scripts/setup-notebooklm-mcp.sh`(Node版・WSL2/WSLg・Chrome・パッケージ解決・`.mcp.json`整合のプリフライト)を実行後、Claude Code上でMCPツール`setup_auth`を1回実行してGoogleログイン。cookieは`~/.local/share/notebooklm-mcp/chrome_profile/`に永続化される
+- **秘匿情報の扱い**: `chrome_profile`は本人のGoogleセッションそのもの。リポジトリ配下に置かない・バックアップ共有しない。`.env`系ファイルは不要(CLAUDE.md方針通り作成しない)
+- **既知の制約**: ①非公式実装のためNotebookLM側のUI変更で壊れうる ②無料枠のクエリ数上限あり ③セッション/cookieの有効期限切れ時は`re_auth`が必要 ④GoogleもAnthropicも本方式を公式に是認していない。コンサルタント本人の調査・下読み用途に限定し、クライアント提出物は一次情報で裏取りすること(回答の取り扱いルールはCLAUDE.md「NotebookLM回答の取り扱い」節)
+- **残作業**: ローカル環境での`setup_auth`実行と`claude mcp list`でのConnected確認(このリモートセッションからは本人のGoogleアカウントにログインできないため未実施)
 
 ## ページ管理表
 

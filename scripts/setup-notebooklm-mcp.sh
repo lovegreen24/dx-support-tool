@@ -13,6 +13,13 @@ set -e
 # MCPツール `setup_auth` を1回実行する(ブラウザウィンドウが開く)。
 
 NOTEBOOKLM_MCP_VERSION="2.0.0"
+SKIP_WARMUP=0
+for arg in "$@"; do
+  case "$arg" in
+    --skip-warmup) SKIP_WARMUP=1 ;;
+    *) echo "不明な引数: $arg (使用可能: --skip-warmup)"; exit 1 ;;
+  esac
+done
 
 echo "========================================="
 echo "  NotebookLM MCP 導入プリフライト"
@@ -89,14 +96,26 @@ node -e "
   console.log('✅ .mcp.json の notebooklm エントリを確認(' + pinned + ')');
 "
 
+# ===== 6. ブラウザ事前ダウンロード(初回のMCP起動タイムアウト回避) =====
+if [ "$SKIP_WARMUP" -eq 1 ]; then
+  echo "⏭️  ブラウザ事前ダウンロードをスキップ(--skip-warmup)"
+else
+  echo ""
+  echo ">>> ブラウザ(Patchright Chromium)を事前ダウンロード中... 初回は数分かかります"
+  if npx -y "notebooklm-mcp@${NOTEBOOKLM_MCP_VERSION}" config get >/dev/null 2>&1; then
+    echo "✅ 事前ダウンロード完了(以後のMCP起動は速い)"
+  else
+    echo "⚠️  事前ダウンロードに失敗しました。MCP初回起動が遅くタイムアウトする可能性があります"
+    echo "    手動で確認: npx -y notebooklm-mcp@${NOTEBOOKLM_MCP_VERSION} config get"
+  fi
+fi
+
 echo ""
 echo "========================================="
 echo "  ✅ プリフライト通過"
 echo "========================================="
 echo ""
 echo "次の手順:"
-echo "  0. 初回はブラウザ(Patchright Chromium)のダウンロードで数分かかりMCP起動がタイムアウトしうる。"
-echo "     先にキャッシュを温めておく: npx -y notebooklm-mcp@${NOTEBOOKLM_MCP_VERSION} config get"
 echo "  1. Claude Code を本リポジトリで起動し、.mcp.json の notebooklm サーバーを承認する"
 echo "  2. \`claude mcp list\` で notebooklm が Connected になることを確認"
 echo "  3. MCPツール \`setup_auth\` を1回実行し、開いたChromeでGoogleアカウントにログイン"

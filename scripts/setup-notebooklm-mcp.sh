@@ -45,22 +45,41 @@ fi
 echo "✅ npx $(npx --version)"
 
 # ===== 2. WSL判定(本プロジェクトはWSL2前提。M-009 OCR抽出と同じ制約) =====
+IS_WSL=0
 if grep -qi microsoft /proc/version 2>/dev/null; then
+  IS_WSL=1
   if grep -qi "wsl2" /proc/version 2>/dev/null; then
     echo "✅ WSL2 を検出"
   else
     echo "❌ WSL1 と思われる環境です。notebooklm-mcp は WSL1 非対応のため WSL2 へ移行してください"
     exit 1
   fi
-  if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
-    echo "⚠️  DISPLAY/WAYLAND_DISPLAY が未設定です。setup_auth はログイン画面を表示するため WSLg が必要です"
-    echo "    Windows 11 で 'wsl --update' 後に WSLg を有効化すること"
-    echo "    (上流は headless サーバー向けに xvfb-run を案内しているが、仮想ディスプレイは画面が見えず"
-    echo "     ログイン操作ができないため、WSLg を使うこと)"
-  else
-    echo "✅ ディスプレイ環境あり(WSLg想定)"
-  fi
 fi
+
+# ===== 2b. ディスプレイ必須チェック =====
+# setup_auth は「可視Chromeを開いて人間がGoogleログインする」フローのため、画面が無い環境
+# (クラウド実行のClaude Code・WSLgなしのWSL2・headlessサーバー)では必ず失敗する。
+# 実際に画面の無い環境で setup_auth を実行し、10分近く待ってから失敗する事故が起きたため、
+# ここで先に落として無駄な待ち時間を防ぐ。
+if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+  echo "❌ DISPLAY/WAYLAND_DISPLAY が未設定です(画面の無い環境)"
+  echo ""
+  echo "   setup_auth は可視Chromeウィンドウでの手動Googleログインが前提のため、この環境では"
+  echo "   必ず失敗します(タイムアウトまで待たされた末に失敗する)。"
+  echo ""
+  echo "   よくある原因:"
+  echo "     - クラウド上のClaude Code(ブラウザ/アプリ版)で実行している"
+  echo "       → 本人のPCのターミナルから 'claude' を起動して実行すること"
+  if [ "$IS_WSL" -eq 1 ]; then
+    echo "     - WSL2でWSLgが有効になっていない"
+    echo "       → Windows 11 で 'wsl --update' 後、WSLを再起動すること"
+  fi
+  echo ""
+  echo "   ※ 上流READMEはheadlessサーバー向けにxvfb-runを案内しているが、仮想ディスプレイは"
+  echo "      画面が見えずログイン操作ができないため、本プロジェクトでは採用しない。"
+  exit 1
+fi
+echo "✅ ディスプレイ環境あり(DISPLAY=${DISPLAY:-$WAYLAND_DISPLAY})"
 
 # ===== 3. Chrome(無い場合は同梱Chromiumにフォールバック) =====
 if command -v google-chrome >/dev/null 2>&1 || command -v google-chrome-stable >/dev/null 2>&1; then

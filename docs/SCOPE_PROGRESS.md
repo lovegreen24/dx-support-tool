@@ -156,6 +156,7 @@
 - **導入手順**: `./scripts/setup-notebooklm-mcp.sh`(Node版・WSL2/WSLg・Chrome・パッケージ解決・`.mcp.json`整合のプリフライト)を実行後、Claude Code上でMCPツール`setup_auth`を1回実行してGoogleログイン。cookieは`~/.local/share/notebooklm-mcp/chrome_profile/`に永続化される
 - **秘匿情報の扱い**: `chrome_profile`は本人のGoogleセッションそのもの。リポジトリ配下に置かない・バックアップ共有しない。`.env`系ファイルは不要(CLAUDE.md方針通り作成しない)
 - **既知の制約**: ①非公式実装のためNotebookLM側のUI変更で壊れうる ②無料枠のクエリ数上限あり ③セッション/cookieの有効期限切れ時は`re_auth`が必要 ④GoogleもAnthropicも本方式を公式に是認していない。コンサルタント本人の調査・下読み用途に限定し、クライアント提出物は一次情報で裏取りすること(回答の取り扱いルールはCLAUDE.md「NotebookLM回答の取り扱い」節)
+- **実測した失敗モード(重要)**: 画面の無い環境(クラウド実行のClaude Code・WSLgなしのWSL2)で`setup_auth`を実行すると、可視Chromeを開けないまま約8〜10分のタイムアウトを待たされて失敗する。`get_health`の`headless: true`が見分けの目印。認証が壊れているわけではないので`chrome_profile`の削除・再実行を繰り返しても解決しない。プリフライトスクリプトで`DISPLAY`/`WAYLAND_DISPLAY`未設定を必ず検出して即座に落とすようにした(2b節)
 - **残作業**: ローカル環境での`setup_auth`実行と`claude mcp list`でのConnected確認(このリモートセッションからは本人のGoogleアカウントにログインできないため未実施)
 
 ## ページ管理表

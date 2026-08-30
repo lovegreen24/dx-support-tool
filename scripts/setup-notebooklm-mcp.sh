@@ -47,7 +47,9 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
   fi
   if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
     echo "⚠️  DISPLAY/WAYLAND_DISPLAY が未設定です。setup_auth はログイン画面を表示するため WSLg が必要です"
-    echo "    (WSLgが使えない場合のみ: xvfb-run -a npx notebooklm-mcp@${NOTEBOOKLM_MCP_VERSION})"
+    echo "    Windows 11 で 'wsl --update' 後に WSLg を有効化すること"
+    echo "    (上流は headless サーバー向けに xvfb-run を案内しているが、仮想ディスプレイは画面が見えず"
+    echo "     ログイン操作ができないため、WSLg を使うこと)"
   else
     echo "✅ ディスプレイ環境あり(WSLg想定)"
   fi
@@ -92,7 +94,9 @@ echo "========================================="
 echo "  ✅ プリフライト通過"
 echo "========================================="
 echo ""
-echo "次の手順(Claude Code上で実施):"
+echo "次の手順:"
+echo "  0. 初回はブラウザ(Patchright Chromium)のダウンロードで数分かかりMCP起動がタイムアウトしうる。"
+echo "     先にキャッシュを温めておく: npx -y notebooklm-mcp@${NOTEBOOKLM_MCP_VERSION} config get"
 echo "  1. Claude Code を本リポジトリで起動し、.mcp.json の notebooklm サーバーを承認する"
 echo "  2. \`claude mcp list\` で notebooklm が Connected になることを確認"
 echo "  3. MCPツール \`setup_auth\` を1回実行し、開いたChromeでGoogleアカウントにログイン"

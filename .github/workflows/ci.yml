@@ -19,9 +19,53 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # 秘密情報チェックでbase側との差分(git diff)を取るためフル履歴を取得する
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: 秘密情報チェックの自己テスト(カナリア。fixtureを確実に検知できるか検証)
+        run: |
+          set -eo pipefail
+          # このステップはcheck-secrets.sh自体を変更するPRでも必ず実行されるよう、
+          # 依存インストールより前・かつ実差分チェックより前にjob内へ配置している。
+          if find .github/ci-fixtures/secret-scan-canary -type f | sh .github/scripts/check-secrets.sh; then
+            echo "✋ カナリアfixtureの秘密情報を検知できませんでした(check-secrets.shが壊れている疑い)"
+            exit 1
+          fi
+          echo "▶ カナリア自己テスト成功: check-secrets.shがfixtureの秘密情報を正しく検知しました"
+
+      - name: カバレッジ閾値チェックの自己テスト(カナリア。低カバレッジfixtureを確実に検知できるか検証)
+        run: |
+          set -eo pipefail
+          if sh .github/scripts/check-coverage.sh .github/ci-fixtures/coverage-canary/coverage-summary.json 90 90 "coverage-canary(自己テスト)"; then
+            echo "✋ カナリアfixtureの低カバレッジを検知できませんでした(check-coverage.shが壊れている疑い)"
+            exit 1
+          fi
+          echo "▶ カナリア自己テスト成功: check-coverage.shがfixtureの閾値未達を正しく検知しました"
+
+      - name: 秘密情報チェック(.git/hooks/pre-commitの検知ロジックをCIで二重化)
+        run: |
+          set -eo pipefail
+          case "${{ github.event_name }}" in
+            pull_request) BASE="${{ github.event.pull_request.base.sha }}" ;;
+            push)         BASE="${{ github.event.before }}" ;;
+            *)            BASE="" ;;
+          esac
+
+          if [ -n "$BASE" ] && [ "$BASE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BASE" 2>/dev/null; then
+            files=$(git diff --name-only --diff-filter=ACMR "$BASE" "${{ github.sha }}")
+          else
+            # workflow_dispatch・初回pushなどbase差分が取れない場合は追跡ファイル全体を対象にする(安全側)
+            files=$(git ls-files)
+          fi
+
+          # 自己テスト用fixtureは本番チェックの対象から除外(誤検知防止)
+          files=$(printf '%s\n' "$files" | grep -v '^\.github/ci-fixtures/' || true)
+
+          printf '%s\n' "$files" | sh .github/scripts/check-secrets.sh
 
       - name: Install・TypeScript check・Lint(package.jsonを持つ各パッケージを走査)
         run: |
@@ -54,6 +98,40 @@ jobs:
 
           if [ "$found" = "0" ]; then echo "no package.json found, skipping"; fi
 
-# 注: unit/結合/E2E/build はここに載せない。
+      - name: Test・カバレッジ計測(backend・mcp-servers各パッケージ。frontendはtestスクリプト無しのためスキップ)
+        run: |
+          set -eo pipefail
+          # フォーマット: ディレクトリ|npmスクリプト|カバレッジ最小Statements%|カバレッジ最小Branches%
+          # 閾値はratchet floor(実測値から2〜3ポイント下)。turbo.json導入時はこのループをturbo run testに置き換える。
+          # digital-maturityはpgモックによるunitテスト追加でStmts 61%→100%/Branch 47.82%→86.95%まで
+          # 引き上げ済み(db.ts・assessDigitalMaturity.ts・listDigitalMaturityHistory.tsが0%カバレッジだった問題を解消)。
+          PACKAGES="
+          backend|test|90|88
+          mcp-servers/subsidy-matching|test:unit|93|79
+          mcp-servers/digital-maturity|test:unit|97|84
+          mcp-servers/compensation-optimizer|test:unit|93|81
+          mcp-servers/case-management|test:unit|94|77
+          "
+
+          echo "$PACKAGES" | while IFS='|' read -r dir script min_stmts min_branches; do
+            [ -z "$dir" ] && continue
+            echo "::group::${dir}(npm run ${script})"
+            (
+              cd "$dir"
+              if [ "$script" = "test" ]; then
+                # vitest: coverageレポータにjson-summaryを指定してcoverage-summary.jsonを生成
+                npm test -- --coverage --coverage.reporter=json-summary --coverage.reporter=text
+              else
+                # jest: ${script}スクリプトは既に--coverageを含むため、レポータのみ追加指定
+                npm run "$script" -- --coverageReporters=json-summary --coverageReporters=text
+              fi
+            )
+            sh .github/scripts/check-coverage.sh "${dir}/coverage/coverage-summary.json" "$min_stmts" "$min_branches" "$dir"
+            echo "::endgroup::"
+          done
+
+# 注: E2E/build はここに載せない。
 #   理由 = (1) Actions 課金削減 (2) E2E が本番DB直結で事故るため。
 #   これらは pre-push hook とローカル受入ゲート(Agent 11)で実施する。
+#   unit/結合テストとカバレッジ閾値チェックのみCIに追加済み(秘密情報チェックの二重化と合わせ、
+#   pre-commit/pre-pushローカルhookに依存しない第三防壁として機能する)。

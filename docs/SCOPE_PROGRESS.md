@@ -509,3 +509,14 @@ Critical/High該当の問題なし。以下2件を修正(ユーザー承認の�
 
 **コミット・PR**: PR #3(パイプライン本体)・#4(vercel.json SPA修正)・#5(E2Eスコープ調整)・#7(cicd-rails.jsonマーカー)を`main`へマージ済み(いずれもsquash merge、CI緑を確認の上)。
 
+## 📦 成果物の所在確認(実施日: 2026-09-10)
+
+**背景**: ユーザーから、Claude Artifacts上の成果物(固定費削減シミュレーション表・役員報酬シミュレーター)と、その他の成果物の格納場所・表示確認を依頼された。
+
+**確認内容**:
+- 固定費削減シミュレーション表(`https://claude.ai/code/artifact/fbcdcb95-1849-42f2-ba9c-3ef26eb69a67`)・役員報酬シミュレーター(`https://claude.ai/code/artifact/9ae5fa1e-e832-4c32-936e-1f0c8fa742c8`)・現場ヒアリング質問票(`https://claude.ai/code/artifact/d6e2dec9-aa9a-40cb-9a56-9c81829079c9`)の3点について、Artifact読み取りで実HTMLを取得し、いずれも正常にレンダリング・計算ロジックが機能する状態であることを確認
+- 本番Webアプリ本体(`https://dx-support-tool.vercel.app`)もPlaywrightで開き、ログイン画面が正常表示されることをスクリーンショットで確認(直前のCI/CDパイプライン構築で修正したSPAルーティング(`frontend/vercel.json`)が本番に反映されていることも合わせて確認)
+- claude.ai上の非公開Artifactは自動ブラウザ単体ではログインセッションを共有できずアクセス不可だったため、Artifactツールの`read`アクション(所有者本人としての読み取り)で内容を取得した
+
+**結論**: 全成果物とも異常なし。新規の変更・修正は行っていない(確認のみ)。
+

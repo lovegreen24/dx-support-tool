@@ -1,0 +1,126 @@
+name: Rollback Production
+
+# 手動トリガーのみ。backend(Cloud Run)またはfrontend(Vercel)のどちらか一方を
+# 直前の安定版へ即時切り戻す。
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'ロールバック対象'
+        required: true
+        type: choice
+        options:
+          - backend
+          - frontend
+
+# デプロイと同じグループで排他制御(ロールバック中に新規デプロイが割り込むのを防ぐ)
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write   # GCP Workload Identity Federation用
+
+env:
+  GCP_PROJECT_ID: gen-lang-client-0662622046
+  GCP_REGION: asia-northeast1
+  SERVICE_NAME: dx-support-tool-backend
+  FRONTEND_URL: https://dx-support-tool.vercel.app
+  BACKEND_URL: https://dx-support-tool-backend-244699407868.asia-northeast1.run.app
+
+jobs:
+  # ---------------------------------------------------------------------
+  # rollback:
+  #   environment: production は deploy-prod.yml と同じ承認方針を踏襲する。
+  #   required_reviewers = lovegreen24 が設定されたenvironmentであるため、
+  #   workflow_dispatch実行後も deployment は pending で待機する。
+  #
+  #   承認運用(CLAUDE.md「デプロイはユーザーの明示的な承認を得てから実行する」に基づく。
+  #   ロールバックも「本番切り戻し」という本番デプロイの一種として同じ規定を適用する):
+  #     1. オーケストレーター(Claude Code)がユーザー(lovegreen24)に、
+  #        ロールバック対象(channel)・切り戻し先revision/deploymentを会話上で提示し、
+  #        明示的な承認を得る。
+  #     2. 承認を得た後、AI(Claude Code)がユーザーに代わって以下を実行し
+  #        pending_deployments を承認したうえで本ジョブを実行させる:
+  #          gh api --method POST \
+  #            repos/lovegreen24/dx-support-tool/actions/runs/<run_id>/pending_deployments \
+  #            -f 'environment_ids[]=<production環境ID>' \
+  #            -f state=approved \
+  #            -f comment='<会話での承認内容の要旨>(承認者: lovegreen24 / 会話上で承認取得)'
+  #     3. GitHub UI 上で人間がボタンを押す運用は取らない(通常デプロイと同じ方針)。
+  rollback:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      # ===== backend: 直前の安定revisionへ即時切り戻し =====
+      - name: Authenticate to GCP
+        if: inputs.channel == 'backend'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        if: inputs.channel == 'backend'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Identify current and previous stable backend revisions
+        if: inputs.channel == 'backend'
+        id: revisions
+        run: |
+          set -e
+          CURRENT=$(gcloud run services describe "$SERVICE_NAME" \
+            --region "$GCP_REGION" --project "$GCP_PROJECT_ID" \
+            --format='value(status.traffic.filter(percent=100).revisionName)')
+
+          # 100%トラフィックを持つ現行revisionを除いた、作成日時降順の直前revisionを取得
+          PREVIOUS=$(gcloud run revisions list \
+            --service="$SERVICE_NAME" --region="$GCP_REGION" --project="$GCP_PROJECT_ID" \
+            --sort-by='~metadata.creationTimestamp' \
+            --format='value(metadata.name)' \
+            | grep -v -x "$CURRENT" | head -n 1)
+
+          if [ -z "$PREVIOUS" ]; then
+            echo "::error::切り戻し可能な直前revisionが見つかりません(revision履歴が1件のみ)"
+            exit 1
+          fi
+
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "previous=$PREVIOUS" >> "$GITHUB_OUTPUT"
+          echo "現行revision: $CURRENT"
+          echo "切り戻し先revision: $PREVIOUS"
+
+      - name: Roll back backend traffic to previous revision
+        if: inputs.channel == 'backend'
+        run: |
+          gcloud run services update-traffic "$SERVICE_NAME" \
+            --to-revisions="${{ steps.revisions.outputs.previous }}=100" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID"
+
+      - name: Verify backend rollback
+        if: inputs.channel == 'backend'
+        run: |
+          curl -f --retry 5 --retry-delay 5 --retry-connrefused "${BACKEND_URL}/api/health"
+
+      # ===== frontend: 直前デプロイメントへロールバック =====
+      - name: Roll back frontend via Vercel
+        if: inputs.channel == 'frontend'
+        working-directory: frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: |
+          set -e
+          npm install --global vercel@latest
+          # 引数なし = 直前のProductionデプロイメントへロールバック
+          vercel rollback --yes --token="$VERCEL_TOKEN"
+
+      - name: Verify frontend rollback
+        if: inputs.channel == 'frontend'
+        run: |
+          curl -f --retry 5 --retry-delay 5 --retry-connrefused "${FRONTEND_URL}"

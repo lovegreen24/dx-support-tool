@@ -445,3 +445,91 @@ Phase 7登録済み6エージェントを対象に、各エージェントの本
 
 **gitへの反映**: 上記2ページはコード実装ではなくClaude Artifacts上の別成果物のため、リポジトリへのコード変更・コミットは無し。本ファイルへの記録のみ。
 
+## 🔗 Phase 7エージェントの統合(DX伴走支援オーケストレーター、実施日: 2026-08-28)
+
+**背景**: Phase 7で個別登録した5エージェント(@クライアント管理/@決算書解析/@ヒアリング管理/@財務分析/@提言書生成)がマイエージェント一覧上で乱立していたため、BlueLampの「エージェント統合(まとめ)」機能で1体に再構築した。
+
+**実施内容**:
+- タイプ判定: 混在型(クライアント登録→決算書解析→ヒアリング→財務分析→提言書生成の直列本流＋クライアント履歴検索は随時呼び出し可能な補助分岐)
+- 5体の全文を突き合わせ、枠の重複(プロンプト保護文言・共通コンテキスト読込指示・MCP疎通確認手順・共通ヒアリング/対応ルール)のみを1本化し、各体の専門ノウハウ(8カテゴリのヒアリング詳細・黒字倒産の3サイン3罠・必要運転資金計算書フォーマット・固定費ベンチマーク実績値・法規制境界線と免責文言3点・鉄の掟29項目)は原文粒度のまま保持
+- `update_my_agent`で旧@決算書解析(ID: `b917b8d5-d930-4ae2-abe4-ddbe7f4b1316`、スロット`bluelamp120`)の本文を統合版で全面書き換え。名称を「DX伴走支援オーケストレーター」、キーワードを`@DX伴走支援`に変更(スロット番号`bluelamp120`は維持)
+- 旧4体(@クライアント管理/@ヒアリング管理/@財務分析/@提言書生成)はユーザー判断により削除せず現状維持(将来的な処遇は未定・ユーザー判断待ち)
+
+**ユーザー確認事項**: 統合版を実際にボタンから起動して1件通しで動作確認すること。旧4体の削除要否は統合版の実運用に問題が無いことを確認してから判断する。
+
+**注記(範囲外)**: 同セッションで「電子書籍Kindle制作フロー」(旧19体→3体)・「証憑OCR系の重複登録解消」(4体削除)も並行して実施したが、いずれも本プロジェクト(DX伴走支援ツール)とは無関係な別のBlueLampエージェントのため、本ファイルには記録していない。
+
+## 📋 現場ヒアリング質問票の対象拡張(企業経営者向け・IT部門責任者向け追加、実施日: 2026-08-29)
+
+**背景**: 既存のヒアリング質問票Artifact(`https://claude.ai/code/artifact/d6e2dec9-aa9a-40cb-9a56-9c81829079c9`、対象: 商工会 経営指導員 / 税理士・会計事務所)に対し、②企業経営者向け、③IT部門責任者向けの質問票を追加してほしいとの依頼。
+
+**実施内容**: 既存デザイン(新聞・帳票風、明朝×ゴシック、テーマ対応済みCSS)を踏襲し、同一Artifact内に対象切替タブを追加して3種の質問票を1枚にまとめた(同URLを更新)。
+- **企業経営者向け**: 質問を「自社の話」として再構成。仲介者向け設問(「見ている企業数」等)を除去し、決裁は「自分の判断か相談が必要か」で聞く形に変更
+- **IT部門責任者向け**: シャドーIT・野良ツールの実態、情シス体制(いわゆる「ひとり情シス」)、セキュリティ・データガバナンス、決裁上限、自動化対象業務(社内ヘルプデスク・稟議書のたたき台等)に差し替え
+- 3対象ともQ1〜Q5本編+Q6〜Q8任意設問+集計シートの構成は共通とし、判定基準(判断ライン)・集計表の列見出しは対象ごとに調整
+- 印刷は画面上で選択中の対象のみ出力される設計(`@media print`で非選択シートを非表示)。選択状態は`localStorage`に保存し、次回開いた際も直前の選択を復元
+
+**gitへの反映**: コード実装ではなくClaude Artifacts上の成果物のため、リポジトリへのコード変更・コミットは無し(本ファイルへの記録のみ、上記「クライアント向け説明ページの作成」と同様の扱い)。
+
+**成果物**: https://claude.ai/code/artifact/d6e2dec9-aa9a-40cb-9a56-9c81829079c9
+
+## 🔒 本番運用診断(compensation-optimizer MCP新規診断、実施日: 2026-09-10)
+
+**背景**: Phase 11本番運用診断(2026-08-08、総合91/100・A評価)以降、本番デプロイ済みのbackend/frontend/既存3 MCP(case-management/digital-maturity/subsidy-matching)には無変更。新規追加された`compensation-optimizer`は「本番Cloud Run/Vercelとは無接続・永続化なし・コンサルタント本人専用のlocal MCP」と設計上明記されており前回診断の対象外だったため、今回はこのMCP単体を対象に新規診断を実施(既存部分は91点のまま据え置き)。
+
+**診断範囲**: ローカル専用stdio MCP(HTTPサーバー非公開・DB非接続)のため、クラウドインフラ/認証認可/セキュリティヘッダー/デプロイ/モニタリング等は評価対象外(N/A)。CVSS脆弱性・ライセンス・コード品質・信頼性(入力検証・境界処理)を実診断。
+
+**診断結果**:
+- CVSS脆弱性: `npm audit`で`qs`(CVSS 5.3, Moderate, DoS)1件を検出。`@modelcontextprotocol/sdk`が持つexpress(HTTP transport用、本MCPは`StdioServerTransport`のみ使用のため未使用経路)からの推移的依存
+- ライセンス: `license-checker`で全依存関係が商用利用可能と確認(MIT/ISC/BSD、`UNLICENSED`表示は自パッケージ自体のprivate指定のみ)
+- 型安全性: `tsconfig.json`で`strict: true`、`any`型・`console.log`ともに0件(`grep`で実証)
+- 入力検証: MCPツール境界(`validateAndNormalize`)で全フィールドの型・範囲チェックとエラー`throw`を実装確認(フォールバック隠蔽なし)
+- テストカバレッジ: コアロジック(`simulation.ts`/`socialInsurance.ts`/`incomeTax.ts`等)は96%超だが、MCPの唯一の外部境界である`src/tools/simulateExecutiveCompensation.ts`(入力検証ロジック含む)が**カバレッジ0%**だった
+
+Critical/High該当の問題なし。以下2件を修正(ユーザー承認の上、実施)。
+
+**実施した修正**:
+- `npm audit fix`で`qs`を更新し脆弱性0件化(破壊的変更なし、`npm run build`で再ビルド確認)
+- `tests/unit/simulateExecutiveCompensation.test.ts`を新規追加し、`validateAndNormalize`の全バリデーション分岐(都道府県/booleanフィールド/負数/`effective_corporate_tax_rate`の範囲・必須条件)をテスト。修正後カバレッジ: 該当ファイル93.54%、全体95.83%(既存45件+新規13件=計58件、全件パス)
+
+**残存事項**: なし(Critical/High/Medium相当の未対応課題は無し)
+
+## 🚦 gated CI/CDパイプライン構築(実施日: 2026-09-10)
+
+**背景**: 7項目監査(PRテストゲート/staging環境+専用DB/staging上リグレッション/gated昇格/段階公開/CI内マイグレーション/可逆性)を実施したところ全て×だった。CLAUDE.md記載の三段防壁(第一=git hook、第二=ローカル受入ゲート、第三=軽量Actions)は意図的な設計だが、CI側にunit/内部結合テストの実行が無い(tsc/lintのみ)・staging環境が存在しない・本番デプロイが手動スクリプト実行のみ、という状態だった。ユーザー承認の上、フル規格でgated CI/CDパイプラインを構築した。
+
+**実施内容**:
+1. **PRゲート強化**(`.github/workflows/ci.yml`): 既存のtsc/lintに加え、backend(vitest)・mcp-servers×4(jest)のunit/内部結合テスト実行、パッケージ別カバレッジ閾値ゲート(ratchet floor: backend 90/88・subsidy-matching 93/79・digital-maturity 97/84・compensation-optimizer 93/81・case-management 94/77)、秘密情報チェックの二重化(`.git/hooks/pre-commit`のロジックをCIに移植)、カナリア自己テスト(検査スクリプト自体が壊れていないかをfixtureで検証)を追加
+2. **staging環境新設**: Cloud Run新規サービス`dx-support-tool-backend-staging`(本番と同一GCPプロジェクト`gen-lang-client-0662622046`)、Vercelプレビューデプロイ、staging専用Google Sheets(新規スプレッドシート、タブ「案件進捗」、本番と同一サービスアカウント`case-management-mcp@dx-support-case-mgmt-4921c3.iam.gserviceaccount.com`をwriter共有)。`deploy-staging.yml`(main push契機)でbackend/frontendデプロイ→外部結合テスト(staging Sheetsへ実接続)→E2Eスモークを自動実行
+3. **本番デプロイ・ロールバック**(`deploy-prod.yml`/`rollback.yml`): `v*.*.*`タグ契機、GitHub Environment `production`(required reviewer=lovegreen24)による承認ゲート、backend側は`--no-traffic`デプロイ→スモーク→100%昇格の最小形カナリア(低トラフィックのため監視接続のgraded canaryは不採用)、frontend側はVercel本番デプロイ。ロールバックはbackend=直前revisionへの即時traffic切替、frontend=`vercel rollback`
+4. **承認方針**: CLAUDE.mdの「デプロイはユーザーの明示的な承認を得てから実行する」を優先し、本エージェント標準(通常リリース=AI単独承認)ではなく、全本番デプロイでtag push前に会話上の承認を得てからAIが`pending_deployments`をAPI承認する方式を採用
+5. **digital-maturity MCPのテストバックフィル**: `db.ts`・`assessDigitalMaturity.ts`・`listDigitalMaturityHistory.ts`が unit testで0%カバレッジだった問題を、`pg.Pool`をモックした新規unitテスト追加で解消(Stmts 61.0%→100%、Branch 47.82%→86.95%)
+6. **インフラ整備**: GCP Workload Identity Federation(Pool/Provider/デプロイ用サービスアカウント`github-actions-deployer@gen-lang-client-0662622046.iam.gserviceaccount.com`、リポジトリ限定)、staging用Secret Manager 3件、GitHub Actions secrets 7件(GCP_WIF_PROVIDER/GCP_SERVICE_ACCOUNT/VERCEL_TOKEN/STAGING_GOOGLE_SHEETS_ID/STAGING_GOOGLE_SERVICE_ACCOUNT_JSON/STAGING_API_KEY/STAGING_DASHBOARD_PASSWORD)・variables 2件(VERCEL_ORG_ID/VERCEL_PROJECT_ID)を新規登録
+
+**発見・修正した既存バグ**: `frontend/vercel.json`にSPAルーティング用のrewrite設定が無く、`/login`等への直接アクセス・リロードが本番环境でも404になっていた(staging E2E導入で発覚)。`{"source": "/(.*)", "destination": "/index.html"}`を追加して修正(PR #4)。
+
+**staging E2Eのスコープ調整**: 導入直後の初回実行でDASH-004以降(30件中21件)が全滅。原因はクライアント数「3件」等の固定シードデータに依存するテストだが、staging環境へそのデータを自動投入する仕組みがリポジトリに存在しない(本ファイル301行目付近の記録の通り、E2E実装時に手動投入した`backend/data/clients.json`のスナップショットとGoogleスプレッドシートへの手動行追加に依存しており、再現可能なシード機構は未整備)ため。E2Eテスト設計側の課題でありCI/CDパイプライン構築のスコープ外と判断し、staging gateのE2Eはデータ非依存の構造テスト(DASH-001ログイン/DASH-002未ログインリダイレクト/DASH-003セッション永続化)の3件に限定した(PR #5)。フル回帰(30件)向けの自動シード機構整備は別課題として`.github/cicd-rails.json`に記録。
+
+**動作検証**:
+- PR #3(パイプライン本体): CI緑を確認。意図的に失敗するテストを追加したPR #6でCIが正しく赤くなることを実証後、マージせず破棄
+- staging: `deploy-staging.yml`実行でbackend/frontendデプロイ・外部結合テスト・E2Eスモーク全ジョブが成功
+- 本番デプロイ(`deploy-prod.yml`)・ロールバック(`rollback.yml`)は実タグpushでの動作検証は未実施(ユーザー判断により次回実際のリリース時に初回検証とする)
+
+**スコープ外と判断した事項**:
+- digital-maturity MCP(Supabase)のマイグレーション管理導入: マイグレーションの仕組み自体がリポジトリに存在しないが、デプロイ経路がBlueLampストア経由でGitHub Actions管理外のため、CI内マイグレーション(監査項目6)の対象外として`.github/cicd-rails.json`にgap記録のみ行った
+
+**設置ファイル**: `.github/workflows/ci.yml`(拡張)、`deploy-staging.yml`・`deploy-prod.yml`・`rollback.yml`(新規)、`.github/scripts/check-secrets.sh`・`check-coverage.sh`、`.github/ci-fixtures/`、`.github/cicd-rails.json`(敷設完了マーカー)、`mcp-servers/digital-maturity/tests/unit/*.test.ts`、`frontend/vercel.json`
+
+**コミット・PR**: PR #3(パイプライン本体)・#4(vercel.json SPA修正)・#5(E2Eスコープ調整)・#7(cicd-rails.jsonマーカー)を`main`へマージ済み(いずれもsquash merge、CI緑を確認の上)。
+
+## 📦 成果物の所在確認(実施日: 2026-09-10)
+
+**背景**: ユーザーから、Claude Artifacts上の成果物(固定費削減シミュレーション表・役員報酬シミュレーター)と、その他の成果物の格納場所・表示確認を依頼された。
+
+**確認内容**:
+- 固定費削減シミュレーション表(`https://claude.ai/code/artifact/fbcdcb95-1849-42f2-ba9c-3ef26eb69a67`)・役員報酬シミュレーター(`https://claude.ai/code/artifact/9ae5fa1e-e832-4c32-936e-1f0c8fa742c8`)・現場ヒアリング質問票(`https://claude.ai/code/artifact/d6e2dec9-aa9a-40cb-9a56-9c81829079c9`)の3点について、Artifact読み取りで実HTMLを取得し、いずれも正常にレンダリング・計算ロジックが機能する状態であることを確認
+- 本番Webアプリ本体(`https://dx-support-tool.vercel.app`)もPlaywrightで開き、ログイン画面が正常表示されることをスクリーンショットで確認(直前のCI/CDパイプライン構築で修正したSPAルーティング(`frontend/vercel.json`)が本番に反映されていることも合わせて確認)
+- claude.ai上の非公開Artifactは自動ブラウザ単体ではログインセッションを共有できずアクセス不可だったため、Artifactツールの`read`アクション(所有者本人としての読み取り)で内容を取得した
+
+**結論**: 全成果物とも異常なし。新規の変更・修正は行っていない(確認のみ)。
+

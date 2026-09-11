@@ -1,0 +1,47 @@
+{
+  "version": "1.0.0",
+  "installedAt": "2026-09-10",
+  "audit": {
+    "1_pr_test_gate": {
+      "status": "green",
+      "detail": "ci.ymlでtsc/lint/unit/内部結合テスト(backend+mcp-servers×4)+カバレッジ閾値ゲート(ratchet floor)+秘密情報チェック二重化+カナリア自己テストを実装。PR#3で実CI緑を確認、PR#6で意図的な失敗が正しく赤化することを実証済み。"
+    },
+    "2_staging_env_and_db": {
+      "status": "green",
+      "detail": "Cloud Run staging(dx-support-tool-backend-staging)+Vercelプレビュー+staging専用Google Sheets(タブ「案件進捗」)を新設。deploy-staging.ymlで実デプロイ成功を確認済み。"
+    },
+    "3_staging_regression": {
+      "status": "green_partial",
+      "detail": "外部結合テスト(caseProgress.external.test.ts、staging Sheetsへ実接続)とE2Eスモーク(DASH-001〜003: ログイン/未ログインリダイレクト/セッション永続化)がdeploy-staging.ymlで自動実行・全緑を確認済み。",
+      "known_gap": "DASH-004以降(30件中21件)は固定シードデータ(クライアント3件等)に依存するが、staging環境への自動シード投入機構がリポジトリに存在しない(docs/SCOPE_PROGRESS.mdに手動投入の記録のみ)。フル回帰はシード機構整備後の別課題(@E2Eテストの担当領域)。"
+    },
+    "4_gated_promotion": {
+      "status": "implemented_unverified",
+      "detail": "GitHub Environment `production`(required reviewer=lovegreen24)を作成。承認運用はCLAUDE.mdの「デプロイはユーザーの明示的な承認を得てから実行する」を優先し、tag push前に会話上の承認を得てからAIがpending_deploymentsをAPI承認する方式をdeploy-prod.yml/rollback.ymlに実装。実タグpushによる動作確認は未実施。"
+    },
+    "5_staged_rollout": {
+      "status": "implemented_unverified",
+      "detail": "backend: --no-traffic デプロイ→スモーク→100%昇格の最小形カナリアをdeploy-prod.ymlに実装(低トラフィックのため監視接続のgradedカナリアは不採用)。frontend: Vercel previewデプロイの仕組みは確認済みだが本番昇格経路の実行は未実施。"
+    },
+    "6_ci_migration": {
+      "status": "not_applicable_scoped_out",
+      "detail": "GitHub Actions管理下のチャネル(backend=ファイルベース、frontend=DB無し)にはDBマイグレーションが本来不要。digital-maturity MCP(Supabase)はマイグレーション管理の仕組み自体が無いが、デプロイ経路がBlueLampストア経由でGitHub Actions管理外のため本パイプラインのスコープ外。"
+    },
+    "7_reversibility": {
+      "status": "implemented_unverified",
+      "detail": "rollback.yml(workflow_dispatch、backend=直前revisionへtraffic切替、frontend=vercel rollback)を実装。実行による動作確認は未実施。"
+    }
+  },
+  "known_followups": [
+    "E2Eフル回帰(DASH-004〜030)向けのstaging自動シード機構の整備(@E2Eテスト)",
+    "digital-maturity MCP(Supabase)のマイグレーション管理導入(スコープ外・別タスク)",
+    "本番デプロイ(deploy-prod.yml)・ロールバック(rollback.yml)の実タグpushによる動作検証"
+  ],
+  "infra": {
+    "gcp_project": "gen-lang-client-0662622046",
+    "wif_pool": "projects/244699407868/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider",
+    "deployer_service_account": "github-actions-deployer@gen-lang-client-0662622046.iam.gserviceaccount.com",
+    "staging_backend_service": "dx-support-tool-backend-staging",
+    "staging_google_sheet_id": "1owTQNogOqkZsIwiQlmA35Z7qSTPdCeP5fXRlmX8edqM"
+  }
+}

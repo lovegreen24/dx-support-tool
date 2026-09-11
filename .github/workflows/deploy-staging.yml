@@ -1,0 +1,169 @@
+name: Deploy Staging
+
+# staging環境(Cloud Run + Vercelプレビュー)へのデプロイと自動リグレッション(外部結合テスト・E2E)。
+# mainへのpush毎に実行する。各ジョブ・各ステップは失敗時に後続を実行せず赤くする(デフォルト挙動のまま、
+# continue-on-error等は使わない)。
+#
+# 【重要】外部結合テスト(test:integration:external)は実際のGoogle Sheets APIに書き込みを行うため、
+# 本番のスプレッドシートとは別の staging 専用シートを参照する前提(secrets.STAGING_GOOGLE_SHEETS_ID /
+# secrets.STAGING_GOOGLE_SERVICE_ACCOUNT_JSON)。本番シートIDを絶対に指定しないこと。
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging-${{ github.ref }}
+  # 外部結合テストが実shシートに行を書いて削除するため、cancel-in-progressにすると
+  # 実行中ジョブが強制中断されテスト行がシートに残留する恐れがある。
+  # 同時多重実行を防ぎつつ、キャンセルはせずキューイングする。
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  GCP_PROJECT_ID: gen-lang-client-0662622046
+  GCP_REGION: asia-northeast1
+  BACKEND_SERVICE_STAGING: dx-support-tool-backend-staging
+  NODE_VERSION: '20'
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # google-github-actions/auth (Workload Identity Federation)用
+    outputs:
+      backend_url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: GCP認証(Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: gcloud CLIセットアップ
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Cloud Run staging へBuild&Deploy
+        id: deploy
+        run: |
+          set -e
+          gcloud run deploy "$BACKEND_SERVICE_STAGING" \
+            --quiet \
+            --source ./backend \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --allow-unauthenticated \
+            --max-instances=2 \
+            --set-env-vars="NODE_ENV=production,CLIENT_STORE_FILE_PATH=/tmp/dx-support-tool-staging/clients.json" \
+            --set-secrets="API_KEY=dx-support-tool-staging-API_KEY:latest,GOOGLE_SERVICE_ACCOUNT_JSON=dx-support-tool-staging-GOOGLE_SERVICE_ACCOUNT_JSON:latest,GOOGLE_SHEETS_ID=dx-support-tool-staging-GOOGLE_SHEETS_ID:latest"
+          # FRONTEND_ORIGIN は意図的に未設定のままにする。
+          # Vercelプレビューデプロイ毎にURLが変わるため固定できない。
+          # backend/src/app.ts の cors設定は config.frontendOrigin 未設定時 origin:true(全許可)に
+          # フォールバックする実装であり、本番データを扱わないstagingでは許容範囲と判断。
+
+          URL=$(gcloud run services describe "$BACKEND_SERVICE_STAGING" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --format="value(status.url)")
+
+          if [ -z "$URL" ]; then
+            echo "::error::Cloud Run staging サービスURLの取得に失敗しました"
+            exit 1
+          fi
+
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+  external-integration-test:
+    needs: deploy-backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install(backend)
+        working-directory: backend
+        run: npm ci
+
+      - name: 外部結合テスト(caseProgress.external.test.ts、staging Google Sheetsへ実接続・モック禁止)
+        working-directory: backend
+        run: npm run test:integration:external
+        env:
+          GOOGLE_SHEETS_ID: ${{ secrets.STAGING_GOOGLE_SHEETS_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.STAGING_GOOGLE_SERVICE_ACCOUNT_JSON }}
+
+  deploy-frontend:
+    needs: deploy-backend
+    runs-on: ubuntu-latest
+    outputs:
+      frontend_url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Vercel CLIインストール
+        run: npm install --global vercel@56.3.2
+
+      - name: Vercelプレビューデプロイ(backend staging URLをビルド時env埋め込み)
+        id: deploy
+        working-directory: frontend
+        env:
+          # VERCEL_ORG_ID/VERCEL_PROJECT_IDは非機密情報のためsecretsではなくvars
+          # (deploy-prod.yml・rollback.ymlと同じ命名規則に合わせる)
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: |
+          set -e
+          DEPLOY_URL=$(vercel deploy \
+            --token="${{ secrets.VERCEL_TOKEN }}" \
+            --yes \
+            --build-env VITE_API_BASE_URL="${{ needs.deploy-backend.outputs.backend_url }}" \
+            --build-env VITE_API_KEY="${{ secrets.STAGING_API_KEY }}" \
+            --build-env VITE_DASHBOARD_PASSWORD="${{ secrets.STAGING_DASHBOARD_PASSWORD }}")
+
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "::error::Vercelプレビューデプロイのdeploy URL取得に失敗しました"
+            exit 1
+          fi
+
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+
+  e2e:
+    needs: [deploy-backend, deploy-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install(frontend)
+        working-directory: frontend
+        run: npm ci
+
+      - name: Playwrightブラウザインストール
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E smoke(構造面のみ。DASH-004以降は固定シードデータ依存で自動投入機構が無いため対象外)
+        working-directory: frontend
+        # DASH-001/002/003はログイン・未ログインリダイレクト・セッション永続化のみを検証する
+        # データ非依存の構造テスト。DASH-004以降はクライアント数「3件」等の実データを前提とし、
+        # backend/data/clients.json・Googleスプレッドシート「案件進捗」への自動シード機構が
+        # リポジトリに存在しないため(docs/SCOPE_PROGRESS.mdに手動投入の記録のみ)、
+        # staging gateからは除外する(cicd-rails.jsonにフォローアップ課題として記録)。
+        run: npx playwright test tests/e2e/dashboard.spec.ts --grep "DASH-00[123] "
+        env:
+          BASE_URL: ${{ needs.deploy-frontend.outputs.frontend_url }}

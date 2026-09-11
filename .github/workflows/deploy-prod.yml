@@ -1,0 +1,186 @@
+name: Deploy Production
+
+# トリガー: セマンティックバージョンタグの push のみ(例: v1.2.3)。
+# 前提: このタグに対応するコミットは、main への PR マージ時点で
+#       ci.yml の verify ジョブ(tsc・lint)を既に通過済みであること。
+#       (tag push は「リリース確定」の合図であり、コード検証のトリガーではない)
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+# 本番デプロイは同時実行不可。キューイングせず、進行中のデプロイを待つ
+# (cancel-in-progress: false = 本番デプロイの割り込み・中断は禁止)
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # GitHub Release作成用
+  id-token: write   # GCP Workload Identity Federation用
+
+env:
+  GCP_PROJECT_ID: gen-lang-client-0662622046
+  GCP_REGION: asia-northeast1
+  SERVICE_NAME: dx-support-tool-backend
+  FRONTEND_URL: https://dx-support-tool.vercel.app
+  BACKEND_URL: https://dx-support-tool-backend-244699407868.asia-northeast1.run.app
+
+jobs:
+  # ---------------------------------------------------------------------
+  # test: mainのPRゲート(ci.yml)を再実行し、tag push時点のコードも
+  #       念のため tsc/lint/test で再検証する(simplicity優先で ci.yml への
+  #       workflow_run依存にはせず、同等チェックをこのジョブ内で完結させる)
+  # ---------------------------------------------------------------------
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: backend typecheck/lint/test
+        working-directory: backend
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npm test
+
+      - name: frontend typecheck/lint/build
+        working-directory: frontend
+        run: |
+          npm ci
+          npx tsc -b
+          npm run lint
+          npm run build
+
+  # ---------------------------------------------------------------------
+  # deploy-production:
+  #   environment: production は GitHub 側で required_reviewers = lovegreen24
+  #   を設定済みという前提(このリポジトリの Settings > Environments で別途設定。
+  #   本ワークフロー内では作成しない)。
+  #
+  #   承認運用(CLAUDE.md「デプロイはユーザーの明示的な承認を得てから実行する」に基づく):
+  #     1. tag push によりこのジョブが起動すると、production environment の
+  #        保護ルールにより deployment が pending 状態で待機する。
+  #     2. オーケストレーター(Claude Code)は会話上でユーザー(lovegreen24)に
+  #        デプロイ内容を提示し、明示的な承認を得る。
+  #     3. 承認を得た後、AI(Claude Code)が本人に代わって以下を実行し、
+  #        pending_deployments を承認する:
+  #          gh api --method POST \
+  #            repos/lovegreen24/dx-support-tool/actions/runs/<run_id>/pending_deployments \
+  #            -f 'environment_ids[]=<production環境ID>' \
+  #            -f state=approved \
+  #            -f comment='<会話での承認内容の要旨>(承認者: lovegreen24 / 会話上で承認取得)'
+  #     4. GitHub UI 上で人間がボタンを押す運用は取らない(非技術者に技術操作を
+  #        振らないというCLAUDE.md方針のため、承認の「合意」はチャットで得て、
+  #        「実行」はAIが代行する)。
+  deploy-production:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      # ===== GCP認証(Workload Identity Federation・鍵ファイルなし) =====
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      # ===== backend: カナリア(--no-traffic)デプロイ =====
+      # 既存 scripts/deploy-backend.sh と同一のデプロイ内容だが、
+      # --no-traffic で新revisionにトラフィックを流さずに作成し、
+      # --tag でプレビューURLを発行してスモークテストしてから昇格する。
+      - name: Deploy backend to Cloud Run (no-traffic canary)
+        id: deploy_backend
+        run: |
+          set -e
+          REVISION_TAG="canary-${GITHUB_SHA::7}"
+
+          gcloud run deploy "$SERVICE_NAME" \
+            --source ./backend \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --allow-unauthenticated \
+            --max-instances=2 \
+            --no-traffic \
+            --tag="$REVISION_TAG" \
+            --set-env-vars="NODE_ENV=production,FRONTEND_ORIGIN=${FRONTEND_URL}" \
+            --set-secrets="API_KEY=dx-support-tool-API_KEY:latest,GOOGLE_SERVICE_ACCOUNT_JSON=dx-support-tool-GOOGLE_SERVICE_ACCOUNT_JSON:latest,GOOGLE_SHEETS_ID=dx-support-tool-GOOGLE_SHEETS_ID:latest"
+
+          NEW_REVISION=$(gcloud run services describe "$SERVICE_NAME" \
+            --region "$GCP_REGION" --project "$GCP_PROJECT_ID" \
+            --format='value(status.traffic.filter(tag=null).revisionName)' 2>/dev/null || true)
+          # 上記フィルタで取得できない場合に備え、最新revisionを直接取得
+          if [ -z "$NEW_REVISION" ]; then
+            NEW_REVISION=$(gcloud run revisions list \
+              --service="$SERVICE_NAME" --region="$GCP_REGION" --project="$GCP_PROJECT_ID" \
+              --sort-by='~metadata.creationTimestamp' --limit=1 --format='value(metadata.name)')
+          fi
+
+          TAG_URL=$(gcloud run services describe "$SERVICE_NAME" \
+            --region "$GCP_REGION" --project "$GCP_PROJECT_ID" \
+            --format="value(status.traffic.filter(tag='${REVISION_TAG}').url)")
+
+          echo "revision=$NEW_REVISION" >> "$GITHUB_OUTPUT"
+          echo "tag_url=$TAG_URL" >> "$GITHUB_OUTPUT"
+          echo "新revision: $NEW_REVISION"
+          echo "スモーク用URL(--tag): $TAG_URL"
+
+      # ===== backend: 本番スモーク(トラフィック未接続の新revisionに対して実施) =====
+      - name: Smoke test new backend revision
+        run: |
+          set -e
+          echo "スモーク対象: ${{ steps.deploy_backend.outputs.tag_url }}/api/health"
+          curl -f --retry 5 --retry-delay 5 --retry-connrefused \
+            "${{ steps.deploy_backend.outputs.tag_url }}/api/health"
+
+      # ===== backend: スモーク成功 → 100%昇格 =====
+      - name: Promote backend revision to 100% traffic
+        run: |
+          gcloud run services update-traffic "$SERVICE_NAME" \
+            --to-latest \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID"
+
+      # ===== backend: 昇格後の最終確認(本番URLに対して) =====
+      - name: Verify production traffic (backend)
+        run: |
+          curl -f --retry 5 --retry-delay 5 --retry-connrefused "${BACKEND_URL}/api/health"
+
+      # ===== frontend: Vercel認証・本番デプロイ =====
+      - name: Deploy frontend to Vercel
+        id: deploy_frontend
+        working-directory: frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: |
+          set -e
+          npm install --global vercel@latest
+          DEPLOY_URL=$(vercel deploy --prod --yes --token="$VERCEL_TOKEN")
+          echo "deploy_url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          echo "デプロイURL: $DEPLOY_URL"
+
+      # ===== frontend: スモーク(トップページ200応答確認) =====
+      - name: Smoke test frontend
+        run: |
+          curl -f --retry 5 --retry-delay 5 --retry-connrefused "${FRONTEND_URL}"
+
+      # ===== GitHub Release作成 =====
+      - name: Create GitHub Release
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            --notes "backend revision: ${{ steps.deploy_backend.outputs.revision }}$(printf '\n')frontend deploy: ${{ steps.deploy_frontend.outputs.deploy_url }}"
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -20,6 +20,7 @@
 - フロントエンド: `frontend/`(Vite + React、Vercel。プロジェクト名`dx-support-tool`)
 - バックエンド: `backend/`(Express、Cloud Run。サービス名`dx-support-tool-backend`、リージョン`asia-northeast1`、GCPプロジェクト`gen-lang-client-0662622046`。Buildpacksでソースから直接デプロイ、Dockerfile不要)
 - MCPサーバー: `mcp-servers/*`(cloud_proxy: 補助金マッチング・案件管理・DX成熟度診断／local: OCR抽出)。デプロイ経路はBlueLamp MCPストア経由でありWebのデプロイとは別系統(Phase 5/8/9で登録済み)
+- NotebookLM連携MCP(M-013): サードパーティOSS `notebooklm-mcp`(npm・MIT)をローカル実行。リポジトリルートの`.mcp.json`でバージョン固定して読み込むため、デプロイ対象外(コンサルタント本人のローカル環境のみ)。導入は`./scripts/setup-notebooklm-mcp.sh`
 
 ## 環境変数
 
@@ -56,6 +57,8 @@ Secret ManagerへのアクセスはCloud Runの実行サービスアカウント
 | 補助金マッチング(M-011) | `NOTION_TOKEN`, `NOTION_DATABASE_ID` | `dx-support-tool-notion-token` / `dx-support-tool-notion-database-id` |
 | 案件管理(M-010) | `GOOGLE_SHEETS_ID`, `GOOGLE_SERVICE_ACCOUNT_JSON` | `dx-support-tool-google-sheets-id` / `dx-support-tool-google-service-account-json` |
 | DX成熟度診断(M-012) | `DATABASE_URL`, `SUPABASE_SERVICE_KEY` | `dx-support-tool-supabase-database-url` / `dx-support-tool-supabase-service-key` |
+
+NotebookLM連携(M-013)は秘匿値の環境変数を持たない。認証は本人のGoogleセッション(`~/.local/share/notebooklm-mcp/chrome_profile/`)で完結し、`.mcp.json`が持つのは`NOTEBOOKLM_PROFILE`等の挙動設定のみ。**このChromeプロファイルはGoogleアカウントのセッションそのものであり、リポジトリ・password-manager・バックアップのいずれにも複製しないこと**。
 
 ## CI/CD
 
